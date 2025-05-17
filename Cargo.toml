@@ -1,0 +1,13 @@
+[package]
+name = "sdr-interface"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+soapysdr = "0.4.1"
+num-complex = "0.4.4"
+plotters = "0.3"
+clap = { version = "4.5.4", features = ["derive"] }
+chrono = "0.4"
