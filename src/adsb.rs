@@ -1,3 +1,22 @@
+
+#[derive(Debug)]
+pub enum DownlinkFormat {
+    Civil = 17,
+}
+
+#[derive(Debug)]
+pub enum Capability {
+    
+}
+
+#[derive(Debug)]
+pub struct AdsbPacket {
+    raw_manchester: Vec<u16>,
+    packet: Vec<u8>,
+    downlink_format: DownlinkFormat,
+
+}
+
 pub fn check_preamble(buf: Vec<u32>) -> Option<(u32, i32, i32)> {
     assert!(buf.len() == 16);
 
@@ -66,7 +85,6 @@ pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
             inter = 0;
             errors = 0;
             print!(" ");
-            continue;
         }
 
         if buf[i] > high && buf[i+1] < high { // 1
@@ -75,6 +93,19 @@ pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
             inter &= !(1 << (7 - ((i)/2 % 8)));
         } else {
             errors += 1;
+        }
+    }
+
+    Some(result)
+}
+
+pub fn print_raw_buf(buf: Vec<u32>, high: u32) {
+
+    for i in (0..112).step_by(2) {
+
+        if i % 16 == 0 && i != 0{
+            print!(" ");
+            continue;
         }
 
         if buf[i] > high {
@@ -90,8 +121,6 @@ pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
         }
     }
     print!("\n");
-
-    Some(result)
 }
 
 pub fn print_raw_packet(packet: Vec<u8>) {

@@ -9,7 +9,7 @@ mod sdr;
 use sdr::{get_sdr_args, list_devices};
 
 mod adsb;
-use adsb::{check_preamble, check_df, extract_packet, print_raw_packet};
+use adsb::{check_preamble, check_df, extract_packet, print_raw_packet, print_raw_buf};
 
 const SDR_GAIN: f64 = 49.50;
 const SDR_CHANNEL: usize = 0;
@@ -65,7 +65,9 @@ fn launch_adsb(device: Option<u32>) -> Result<(), Box<dyn std::error::Error>> {
                         if check_df(mag_vec[i+16..i+16+10].to_vec()) {
                             println!("f i: {}, h: {}, s: {}, n {}", i, high, signal_power, noise_power);
                             if let Some(packet) = extract_packet(mag_vec[i+16..i+16+112].to_vec(), high) {
+                                print_raw_buf(mag_vec[i+16..i+16+112].to_vec(), high);
                                 print_raw_packet(packet);
+                            
                                 i += 16+112;
                             };
                         }
