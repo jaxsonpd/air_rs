@@ -25,6 +25,61 @@ pub enum MsgType {
     AircraftOperationStatus
 }
 
+trait AdsbMsg: std::fmt::Debug {
+    fn new(msg: Vec<u8>) -> Self;
+}
+
+#[derive(Debug)] 
+pub struct AircraftID {
+    raw_msg: Vec<u8>,
+    callsign: String
+}
+
+fn to_6bit_chunks(input: Vec<u8>) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut acc = 0u32;
+    let mut bits = 0;
+
+    for byte in input {
+        acc = (acc << 8) | byte as u32;
+        bits += 8;
+
+        while bits >= 6 {
+            bits -= 6;
+            out.push(((acc >> bits) & 0x3F) as u8);
+        }
+    }
+
+    if bits > 0 {
+        out.push(((acc << (6 - bits)) & 0x3F) as u8);
+    }
+
+    out
+}
+
+impl AdsbMsg for AircraftID {
+    fn new(msg: Vec<u8>) -> Self {
+        let char_convert: Vec<char> = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ#####_###############0123456789######".chars().collect();
+        let msg_6_bit = to_6bit_chunks(msg[1..].to_vec());
+        let mut callsign: String = String::new();
+
+        for byte in msg_6_bit.iter() {
+            if let Some(&ch) = char_convert.get(*byte as usize) {
+                callsign.push(ch);
+            } else {
+                callsign.push('?'); // fallback if index is out of bounds
+            }
+        }
+
+        Self {
+            raw_msg: msg,
+            callsign: callsign
+
+        }
+
+    }
+}
+
 #[derive(Debug)]
 pub struct AdsbPacket {
     raw_manchester: Vec<u16>,
@@ -33,8 +88,10 @@ pub struct AdsbPacket {
     capability: u8,
     icao: u32,
     msg_type: u8,
-    msg: Vec<u8>
+    msg: Box<dyn AdsbMsg>
 }
+
+
 
 impl AdsbPacket {
     /// Create a new adsb packet and perform decoding
@@ -86,6 +143,8 @@ impl AdsbPacket {
 }
 
 use std::fmt;
+
+use clap::builder::Str;
 
 impl fmt::Display for AdsbPacket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
