@@ -9,7 +9,7 @@ mod sdr;
 use sdr::{get_sdr_args, list_devices};
 
 mod adsb;
-use adsb::{check_preamble, check_df, extract_packet, print_raw_packet, print_raw_buf};
+use adsb::{check_df, check_preamble, extract_manchester, AdsbPacket};
 
 const SDR_GAIN: f64 = 49.50;
 const SDR_CHANNEL: usize = 0;
@@ -55,20 +55,17 @@ fn launch_adsb(device: Option<u32>) -> Result<(), Box<dyn std::error::Error>> {
         match stream.read(&mut [&mut buf], 2_000_000) {
             Ok(len) => {
                 let buf = &buf[0..len];
-                println!("Got buffer: {}", buf.len());
 
                 let mag_vec: Vec<u32> = get_magnitude(buf);
 
                 let mut i = 0;
-                while i < mag_vec.len()-112*2 {
+                while i < (mag_vec.len()-(16+112*2)) {
                     if let Some((high, signal_power, noise_power)) = check_preamble(mag_vec[i..i+16].to_vec()) {
                         if check_df(mag_vec[i+16..i+16+10].to_vec()) {
-                            println!("f i: {}, h: {}, s: {}, n {}", i, high, signal_power, noise_power);
-                            if let Some(packet) = extract_packet(mag_vec[i+16..i+16+112].to_vec(), high) {
-                                print_raw_buf(mag_vec[i+16..i+16+112].to_vec(), high);
-                                print_raw_packet(packet);
-                            
-                                i += 16+112;
+                            if let Some(raw_buf) = extract_manchester(mag_vec[i+16..i+16+112*2].to_vec(), high) {
+                                let packet = AdsbPacket::new(raw_buf);
+                                println!("{}", packet);
+                                i += 16+112*2;
                             };
                         }
                     }
@@ -98,7 +95,6 @@ fn launch_adsb(device: Option<u32>) -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => println!("Error reading stream: {}", e),
         }
-        println!("Loop");
     }
     Ok(())
 

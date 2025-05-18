@@ -1,3 +1,5 @@
+use std::{default, os::linux::raw};
+
 
 #[derive(Debug)]
 pub enum DownlinkFormat {
@@ -6,16 +8,131 @@ pub enum DownlinkFormat {
 
 #[derive(Debug)]
 pub enum Capability {
-    
+    LevelZero = 0,
+    LevelTwo = 4,
+}
+
+#[derive(Debug)]
+pub enum MsgType {
+    ID = 0,
+    SurfacePosition,
+    AirbornPosBaro,
+    AirbornVel,
+    AirbornPosGNSS,
+    Reserved,
+    AircraftStatus,
+    TargetStatus,
+    AircraftOperationStatus
 }
 
 #[derive(Debug)]
 pub struct AdsbPacket {
     raw_manchester: Vec<u16>,
     packet: Vec<u8>,
-    downlink_format: DownlinkFormat,
-
+    downlink_format: u8,
+    capability: u8,
+    icao: u32,
+    msg_type: u8,
+    msg: Vec<u8>
 }
+
+impl AdsbPacket {
+    /// Create a new adsb packet and perform decoding
+    /// 
+    /// raw_buf - the raw no simplified modified manchester buffer
+    /// 
+    pub fn new(raw_buf: Vec<u16>) -> AdsbPacket{
+        let packet = AdsbPacket::decode_packet(&raw_buf);
+        
+        let downlink_format = packet[0] >> 3;
+        let capability = packet[0] & 5;
+        let icao: u32 = (packet[1] as u32) << 16 | (packet[2] as u32) << 8 | packet[3] as u32;
+        let msg_type = packet[4] >> 3;
+
+        Self {
+            raw_manchester: raw_buf,
+            packet: packet.clone(),
+            downlink_format: downlink_format,
+            capability: capability,
+            icao: icao,
+            msg_type: msg_type,
+            msg: packet[4..packet.len()].to_vec(),
+        }
+    }
+
+    /// Decode the modifided manchester encoding and return the 
+    /// raw hex values
+    /// 
+    /// raw_buf - the raw modified manchester buffer
+    /// returns the packet in hex form
+    fn decode_packet(raw_buf: &Vec<u16>) -> Vec<u8> {
+        let mut result: Vec<u8> = Vec::new();
+        let mut inter: u8 = 0;
+
+        for byte in raw_buf.iter() {
+            for i in (0..16).step_by(2) {
+                let bits = (byte >> (14 - i)) & 0x2;
+
+                match bits {
+                    0b10 => inter |= 1 << (7 - (i/2)),
+                    _ => inter &= !(1 << (7 - (i/2)))
+                }
+            }
+            result.push(inter);
+            inter = 0;
+        }
+        result
+    }
+}
+
+use std::fmt;
+
+impl fmt::Display for AdsbPacket {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Convert raw_manchester to a binary string with space between 16-bit blocks
+        let raw_binary: String = self.raw_manchester
+            .iter()
+            .map(|word| format!("{:016b}", word))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        // Convert packet to binary string (8 bits per byte)
+        let packet_binary: String = self.packet
+            .iter()
+            .map(|byte| format!("{:08b}", byte))
+            .collect::<Vec<_>>()
+            .join("");
+
+        // Convert packet to hex string (2 hex chars per byte)
+        let packet_hex: String = self.packet
+            .iter()
+            .map(|byte| format!("{:02x}", byte))
+            .collect::<Vec<_>>()
+            .join("");
+
+        // Compute the visual offset due to raw_binary spacing
+        let total_bits = self.raw_manchester.len() * 16;
+        let spaces_between = self.raw_manchester.len().saturating_sub(1);
+        let pad_len = total_bits + spaces_between;
+
+        // writeln!(f, "{}", raw_binary)?;
+        // writeln!(f, "{:>width$}", packet_binary, width = pad_len)?;
+        // writeln!(f, "{:>width$}", packet_hex, width = pad_len / 4)?;
+
+        writeln!(f, "{}", packet_hex)?;
+
+        // Add the decoded metadata
+        writeln!(f, "\nDecoded Information:")?;
+        writeln!(f, "Downlink Format : {}", self.downlink_format)?;
+        writeln!(f, "Capability      : {}", self.capability)?;
+        writeln!(f, "ICAO            : {:06X}", self.icao)?;
+        writeln!(f, "Message Type    : {}", self.msg_type)?;
+        writeln!(f, "Message         : {:?}", self.msg)?;
+
+        Ok(())
+    }
+}
+
 
 pub fn check_preamble(buf: Vec<u32>) -> Option<(u32, i32, i32)> {
     assert!(buf.len() == 16);
@@ -66,16 +183,18 @@ pub fn check_df(buf: Vec<u32>) -> bool {
     true
 }
 
-/// Extract the contents of a packet
+/// Extract the manchester values of a packet
 /// 
 /// buf - the data buffer
 /// high - the high level threshold
-pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
-    let mut result: Vec<u8> = Vec::new();
-    let mut inter: u8 = 0;
+/// 
+/// returns the manchester bits if there are not to many errors
+pub fn extract_manchester(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
+    let mut result: Vec<u16> = Vec::new();
+    let mut inter: u16 = 0;
     let mut errors: u8 = 0;
 
-    for i in (0..112).step_by(2) {
+    for i in (0..112*2).step_by(2) {
         if errors > 2 {
             return None;
         }
@@ -87,50 +206,17 @@ pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
             print!(" ");
         }
 
+        inter |= ((buf[i] > high) as u16) << (15 - i % 16);
+
+
         if buf[i] > high && buf[i+1] < high { // 1
-            inter |= 1 << (7 - ((i)/2 % 8));
+            continue;
         } else if buf[i] < high && buf[i+1] > high {
-            inter &= !(1 << (7 - ((i)/2 % 8)));
+            continue;
         } else {
             errors += 1;
         }
     }
 
     Some(result)
-}
-
-pub fn print_raw_buf(buf: Vec<u32>, high: u32) {
-
-    for i in (0..112).step_by(2) {
-
-        if i % 16 == 0 && i != 0{
-            print!(" ");
-            continue;
-        }
-
-        if buf[i] > high {
-            print!("1");
-        } else {
-            print!("0");
-        }
-
-        if buf[i+1] > high {
-            print!("1");
-        } else {
-            print!("0");
-        }
-    }
-    print!("\n");
-}
-
-pub fn print_raw_packet(packet: Vec<u8>) {
-    for byte in packet.iter() {
-        print!("{:08b} ", byte);
-    }
-    print!("\n");
-
-    for byte in packet.iter() {
-        print!("   {:02x}    ", byte);
-    }
-    print!("\n");
 }
