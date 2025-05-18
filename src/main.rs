@@ -62,13 +62,16 @@ fn launch_adsb(device: Option<u32>) -> Result<(), Box<dyn std::error::Error>> {
                 let mut i = 0;
                 while i < mag_vec.len()-112*2 {
                     if let Some((high, signal_power, noise_power)) = check_preamble(mag_vec[i..i+16].to_vec()) {
-                        println!("f i: {}, h: {}, s: {}, n {}", i, high, signal_power, noise_power);
-                        let packet = extract_packet(mag_vec[i+16..i+16+112].to_vec(), high);
-                        print_raw_packet(packet);
-                        i += 16+112;
-                    } else {
-                        i += 1;
+                        if check_df(mag_vec[i+16..i+16+10].to_vec()) {
+                            println!("f i: {}, h: {}, s: {}, n {}", i, high, signal_power, noise_power);
+                            if let Some(packet) = extract_packet(mag_vec[i+16..i+16+112].to_vec(), high) {
+                                print_raw_packet(packet);
+                                i += 16+112;
+                            };
+                        }
                     }
+                    i += 1;
+                    
                 } 
                 // let mut i = 0;
                 // while i < magnitudes.len()-112*2 {

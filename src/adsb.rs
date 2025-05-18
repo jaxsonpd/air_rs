@@ -25,7 +25,7 @@ pub fn check_preamble(buf: Vec<u32>) -> Option<(u32, i32, i32)> {
     Some(((min as f32 * 0.9) as u32, 0, 0))
 }
 
-pub fn check_df(buf: Vec<i32>) -> bool {
+pub fn check_df(buf: Vec<u32>) -> bool {
     // The preamble is followed by DF which needs to be 17 for adsb
     //
     // This translates too:
@@ -51,20 +51,30 @@ pub fn check_df(buf: Vec<i32>) -> bool {
 /// 
 /// buf - the data buffer
 /// high - the high level threshold
-pub fn extract_packet(buf: Vec<u32>, high: u32) -> Vec<u8> {
+pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
     let mut result: Vec<u8> = Vec::new();
     let mut inter: u8 = 0;
+    let mut errors: u8 = 0;
 
     for i in (0..112).step_by(2) {
+        if errors > 2 {
+            return None;
+        }
+
         if i % 16 == 0 && i != 0{
             result.push(inter);
             inter = 0;
+            errors = 0;
             print!(" ");
             continue;
         }
 
         if buf[i] > high && buf[i+1] < high { // 1
             inter |= 1 << (7 - ((i)/2 % 8));
+        } else if buf[i] < high && buf[i+1] > high {
+            inter &= !(1 << (7 - ((i)/2 % 8)));
+        } else {
+            errors += 1;
         }
 
         if buf[i] > high {
@@ -81,7 +91,7 @@ pub fn extract_packet(buf: Vec<u32>, high: u32) -> Vec<u8> {
     }
     print!("\n");
 
-    result
+    Some(result)
 }
 
 pub fn print_raw_packet(packet: Vec<u8>) {
