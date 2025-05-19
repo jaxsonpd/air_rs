@@ -1,6 +1,3 @@
-use std::{default, os::linux::raw};
-
-
 #[derive(Debug)]
 pub enum DownlinkFormat {
     Civil = 17,
@@ -26,7 +23,7 @@ pub enum MsgType {
 }
 
 trait AdsbMsg: std::fmt::Debug {
-    fn new(msg: Vec<u8>) -> Self;
+    fn msg_id_match(id: u8) -> bool where Self: Sized;
 }
 
 #[derive(Debug)] 
@@ -57,7 +54,7 @@ fn to_6bit_chunks(input: Vec<u8>) -> Vec<u8> {
     out
 }
 
-impl AdsbMsg for AircraftID {
+impl AircraftID {
     fn new(msg: Vec<u8>) -> Self {
         let char_convert: Vec<char> = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ#####_###############0123456789######".chars().collect();
         let msg_6_bit = to_6bit_chunks(msg[1..].to_vec());
@@ -80,6 +77,12 @@ impl AdsbMsg for AircraftID {
     }
 }
 
+impl AdsbMsg for AircraftID {
+    fn msg_id_match(id: u8) -> bool {
+        1 <= id && id <= 4 
+    }
+}
+
 #[derive(Debug)]
 pub struct AdsbPacket {
     raw_manchester: Vec<u16>,
@@ -88,10 +91,8 @@ pub struct AdsbPacket {
     capability: u8,
     icao: u32,
     msg_type: u8,
-    msg: Box<dyn AdsbMsg>
+    msg: Option<Box<dyn AdsbMsg>>
 }
-
-
 
 impl AdsbPacket {
     /// Create a new adsb packet and perform decoding
@@ -106,6 +107,11 @@ impl AdsbPacket {
         let icao: u32 = (packet[1] as u32) << 16 | (packet[2] as u32) << 8 | packet[3] as u32;
         let msg_type = packet[4] >> 3;
 
+        let mut msg = None;
+        if AircraftID::msg_id_match(msg_type) {
+            msg = Some(Box::new(AircraftID::new(packet[4..packet.len()].to_vec())) as Box<dyn AdsbMsg>);
+        }
+
         Self {
             raw_manchester: raw_buf,
             packet: packet.clone(),
@@ -113,7 +119,7 @@ impl AdsbPacket {
             capability: capability,
             icao: icao,
             msg_type: msg_type,
-            msg: packet[4..packet.len()].to_vec(),
+            msg: msg,
         }
     }
 
