@@ -1,30 +1,31 @@
 #[derive(Debug)]
-pub enum DownlinkFormat {
-    Civil = 17,
-}
-
-#[derive(Debug)]
-pub enum Capability {
-    LevelZero = 0,
-    LevelTwo = 4,
-}
-
-#[derive(Debug)]
-pub enum MsgType {
-    ID = 0,
-    SurfacePosition,
-    AirbornPosBaro,
-    AirbornVel,
-    AirbornPosGNSS,
-    Reserved,
-    AircraftStatus,
-    TargetStatus,
-    AircraftOperationStatus
+enum AdsbMsgType {
+    AircraftID(AircraftID),
+    Uknown(UknownMsg)
 }
 
 trait AdsbMsg: std::fmt::Debug {
     fn msg_id_match(id: u8) -> bool where Self: Sized;
 }
+
+#[derive(Debug)]
+pub struct UknownMsg {
+    raw_msg: Vec<u8>
+}
+
+#[derive(Debug)]
+pub struct AircarftPosition {
+    raw_msg: Vec<u8>,
+    altitude: u32,
+    latitude: u32,
+    longitude: u32
+}
+
+// impl AircarftPosition {
+//     fn new(msg: Vec<u8>) -> Self {
+//         let altitude = msg[1..4] 
+//     }
+// }
 
 #[derive(Debug)] 
 pub struct AircraftID {
@@ -91,7 +92,7 @@ pub struct AdsbPacket {
     capability: u8,
     icao: u32,
     msg_type: u8,
-    msg: Option<Box<dyn AdsbMsg>>
+    msg: AdsbMsgType
 }
 
 impl AdsbPacket {
@@ -107,9 +108,11 @@ impl AdsbPacket {
         let icao: u32 = (packet[1] as u32) << 16 | (packet[2] as u32) << 8 | packet[3] as u32;
         let msg_type = packet[4] >> 3;
 
-        let mut msg = None;
+        let msg;
         if AircraftID::msg_id_match(msg_type) {
-            msg = Some(Box::new(AircraftID::new(packet[4..packet.len()].to_vec())) as Box<dyn AdsbMsg>);
+            msg = AdsbMsgType::AircraftID(AircraftID::new(packet[4..packet.len()].to_vec()));
+        } else {
+            msg = AdsbMsgType::Uknown(UknownMsg {raw_msg: packet[4..packet.len()].to_vec()});
         }
 
         Self {
@@ -148,41 +151,14 @@ impl AdsbPacket {
     }
 }
 
-use std::fmt;
-
-use clap::builder::Str;
-
-impl fmt::Display for AdsbPacket {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Convert raw_manchester to a binary string with space between 16-bit blocks
-        let raw_binary: String = self.raw_manchester
-            .iter()
-            .map(|word| format!("{:016b}", word))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        // Convert packet to binary string (8 bits per byte)
-        let packet_binary: String = self.packet
-            .iter()
-            .map(|byte| format!("{:08b}", byte))
-            .collect::<Vec<_>>()
-            .join("");
-
+impl std::fmt::Display for AdsbPacket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Convert packet to hex string (2 hex chars per byte)
         let packet_hex: String = self.packet
             .iter()
             .map(|byte| format!("{:02x}", byte))
             .collect::<Vec<_>>()
             .join("");
-
-        // Compute the visual offset due to raw_binary spacing
-        let total_bits = self.raw_manchester.len() * 16;
-        let spaces_between = self.raw_manchester.len().saturating_sub(1);
-        let pad_len = total_bits + spaces_between;
-
-        // writeln!(f, "{}", raw_binary)?;
-        // writeln!(f, "{:>width$}", packet_binary, width = pad_len)?;
-        // writeln!(f, "{:>width$}", packet_hex, width = pad_len / 4)?;
 
         writeln!(f, "{}", packet_hex)?;
 
