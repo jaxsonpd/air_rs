@@ -30,7 +30,7 @@ pub struct AircarftPosition {
 }
 
 impl AircarftPosition {
-    fn new(msg: [u8; 7]) -> Self {
+    pub fn new(msg: [u8; 7]) -> Self {
         let alt_mode_25: bool = msg[1] & (1 << 0) == 1;
         let mut altitude = (((msg[1] >> 1) as u32) << 4) | ((((msg[2]) & 0xF0) as u32) >> 4); 
 
