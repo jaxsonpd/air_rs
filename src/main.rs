@@ -11,6 +11,8 @@ use sdr::{get_sdr_args, list_devices};
 mod adsb;
 use adsb::{check_df, check_preamble, extract_manchester, AdsbPacket};
 
+mod adsb_msgs;
+
 const SDR_GAIN: f64 = 49.50;
 const SDR_CHANNEL: usize = 0;
 
@@ -32,24 +34,24 @@ enum Commands {
     }
 }
 
-fn launch_adsb(device: Option<u32>) -> Result<(), Box<dyn std::error::Error>> {
+fn launch_adsb(device: Option<u32>) {
     println!("Launching adsb with device: {:?}", device);
     // Find RTL-SDR device
-    let args = get_sdr_args(device)?;
+    let args = get_sdr_args(device).expect("Couldn't get sdr args");
 
-    let dev = Device::new(args)?;
+    let dev = Device::new(args).expect("Couldn't create sdr device");
 
-    dev.set_gain_element(Direction::Rx, SDR_CHANNEL, "TUNER", SDR_GAIN)?;
+    dev.set_gain_element(Direction::Rx, SDR_CHANNEL, "TUNER", SDR_GAIN).expect("Couldn't set gain");
 
-    dev.set_frequency(Direction::Rx, SDR_CHANNEL, 1_090_000_000.0, ())?;
+    dev.set_frequency(Direction::Rx, SDR_CHANNEL, 1_090_000_000.0, ()).expect("Couldn't set frequency");
 
-    dev.set_sample_rate(Direction::Rx, SDR_CHANNEL, 2_000_000.0)?;
+    dev.set_sample_rate(Direction::Rx, SDR_CHANNEL, 2_000_000.0).expect("couldn't set sample rate");
     println!("Set up sdr device to 1090MHz freq and 2MHz sample");
 
-    let mut stream = dev.rx_stream::<Complex<i16>>(&[SDR_CHANNEL])?;
-    let mut buf = vec![Complex::new(0, 0); stream.mtu()?];
+    let mut stream = dev.rx_stream::<Complex<i16>>(&[SDR_CHANNEL]).expect("Couldn't start stream");
+    let mut buf = vec![Complex::new(0, 0); stream.mtu().expect("Could get buf")];
 
-    stream.activate(None)?;
+    stream.activate(None).expect("Couldn't activate stream");
 
     loop {
         match stream.read(&mut [&mut buf], 2_000_000) {
@@ -60,7 +62,7 @@ fn launch_adsb(device: Option<u32>) -> Result<(), Box<dyn std::error::Error>> {
 
                 let mut i = 0;
                 while i < (mag_vec.len()-(16+112*2)) {
-                    if let Some((high, signal_power, noise_power)) = check_preamble(mag_vec[i..i+16].to_vec()) {
+                    if let Some((high, _signal_power, _noise_power)) = check_preamble(mag_vec[i..i+16].to_vec()) {
                         if check_df(mag_vec[i+16..i+16+10].to_vec()) {
                             if let Some(raw_buf) = extract_manchester(mag_vec[i+16..i+16+112*2].to_vec(), high) {
                                 let packet = AdsbPacket::new(raw_buf);
@@ -96,17 +98,13 @@ fn launch_adsb(device: Option<u32>) -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => println!("Error reading stream: {}", e),
         }
     }
-    Ok(())
-
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let cli = CliArgs::parse();
 
     match cli.command {
-        Commands::List => list_devices(),
+        Commands::List => list_devices().expect("Couldn't start sdr sub process"),
         Commands::Adsb {device} => launch_adsb(device),
-    }?;
-
-    Ok(())
+    };
 }

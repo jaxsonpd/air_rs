@@ -1,88 +1,7 @@
-#[derive(Debug)]
-enum AdsbMsgType {
-    AircraftID(AircraftID),
-    Uknown(UknownMsg)
-}
+/// Implementation for the adsb packet structure and handling
 
-trait AdsbMsg: std::fmt::Debug {
-    fn msg_id_match(id: u8) -> bool where Self: Sized;
-}
+use crate::adsb_msgs::{AdsbMsgType, AircraftID, UknownMsg, AdsbMsg};
 
-#[derive(Debug)]
-pub struct UknownMsg {
-    raw_msg: Vec<u8>
-}
-
-#[derive(Debug)]
-pub struct AircarftPosition {
-    raw_msg: Vec<u8>,
-    altitude: u32,
-    latitude: u32,
-    longitude: u32
-}
-
-// impl AircarftPosition {
-//     fn new(msg: Vec<u8>) -> Self {
-//         let altitude = msg[1..4] 
-//     }
-// }
-
-#[derive(Debug)] 
-pub struct AircraftID {
-    raw_msg: Vec<u8>,
-    callsign: String
-}
-
-fn to_6bit_chunks(input: Vec<u8>) -> Vec<u8> {
-    let mut out = Vec::new();
-    let mut acc = 0u32;
-    let mut bits = 0;
-
-    for byte in input {
-        acc = (acc << 8) | byte as u32;
-        bits += 8;
-
-        while bits >= 6 {
-            bits -= 6;
-            out.push(((acc >> bits) & 0x3F) as u8);
-        }
-    }
-
-    if bits > 0 {
-        out.push(((acc << (6 - bits)) & 0x3F) as u8);
-    }
-
-    out
-}
-
-impl AircraftID {
-    fn new(msg: Vec<u8>) -> Self {
-        let char_convert: Vec<char> = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ#####_###############0123456789######".chars().collect();
-        let msg_6_bit = to_6bit_chunks(msg[1..].to_vec());
-        let mut callsign: String = String::new();
-
-        for byte in msg_6_bit.iter() {
-            if let Some(&ch) = char_convert.get(*byte as usize) {
-                callsign.push(ch);
-            } else {
-                callsign.push('?'); // fallback if index is out of bounds
-            }
-        }
-
-        Self {
-            raw_msg: msg,
-            callsign: callsign
-
-        }
-
-    }
-}
-
-impl AdsbMsg for AircraftID {
-    fn msg_id_match(id: u8) -> bool {
-        1 <= id && id <= 4 
-    }
-}
 
 #[derive(Debug)]
 pub struct AdsbPacket {
@@ -110,7 +29,7 @@ impl AdsbPacket {
 
         let msg;
         if AircraftID::msg_id_match(msg_type) {
-            msg = AdsbMsgType::AircraftID(AircraftID::new(packet[4..packet.len()].to_vec()));
+            msg = AdsbMsgType::AircraftID(AircraftID::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
         } else {
             msg = AdsbMsgType::Uknown(UknownMsg {raw_msg: packet[4..packet.len()].to_vec()});
         }

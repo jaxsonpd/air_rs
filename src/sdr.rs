@@ -1,4 +1,4 @@
-use soapysdr::{Direction, Device, Args};
+use soapysdr::{Args};
 
 // #[derive(Debug)]
 // pub struct SDRDevice {
