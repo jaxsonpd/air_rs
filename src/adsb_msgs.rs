@@ -6,6 +6,7 @@
 #[derive(Debug)]
 pub enum AdsbMsgType {
     AircraftID(AircraftID),
+    AircarftPosition(AircarftPosition),
     Uknown(UknownMsg)
 }
 
@@ -21,19 +22,31 @@ pub struct UknownMsg {
 
 #[derive(Debug)]
 pub struct AircarftPosition {
-    raw_msg: Vec<u8>,
+    raw_msg: [u8; 7],
+    /// The altitude in feet
     altitude: u32,
     latitude: u32,
     longitude: u32
 }
 
-// impl AircarftPosition {
-//     fn new(msg: [u8; 7]) -> Self {
-//         let raw_msg = msg;
-//         let alt_
-//         let altitude = msg[1..4] 
-//     }
-// }
+impl AircarftPosition {
+    fn new(msg: [u8; 7]) -> Self {
+        let alt_mode_25: bool = msg[1] & (1 << 0) == 1;
+        let mut altitude = (((msg[1] >> 1) as u32) << 4) | ((((msg[2]) & 0xF0) as u32) >> 4); 
+
+        if alt_mode_25 {altitude *= 25}
+        else {altitude *= 100};
+
+        altitude -= 1000; 
+        AircarftPosition { raw_msg: msg, altitude: altitude, latitude: 0, longitude: 0 }
+    }
+}
+
+impl AdsbMsg for AircarftPosition {
+    fn msg_id_match(id: u8) -> bool {
+        9 <= id && id <= 18 
+    }
+}
 
 #[derive(Debug)] 
 pub struct AircraftID {
@@ -108,7 +121,22 @@ mod tests {
         let data: [u8; 7] = [0x20, 0x2C, 0xC3, 0x71, 0xC3, 0x2C, 0xE0];
 
         let id = AircraftID::new(data);
-        println!("{}", id.callsign);
         assert_eq!(id.callsign, "KLM1023_");
+    }
+
+    #[test]
+    fn test_aircraft_position_25() {
+        let data: [u8; 7] = [0x58, 0xC3, 0x82, 0xD6, 0x90, 0xC8, 0xAC];
+
+        let pos = AircarftPosition::new(data);
+        assert_eq!(pos.altitude, 38000);
+    }
+
+    #[test]
+    fn test_aircraft_position_100() {
+        let data: [u8; 7] = [0x58, 0xC2, 0x82, 0xD6, 0x90, 0xC8, 0xAC];
+
+        let pos = AircarftPosition::new(data);
+        assert_eq!(pos.altitude, 155000);
     }
 }

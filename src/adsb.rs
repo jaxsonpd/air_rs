@@ -1,6 +1,6 @@
 /// Implementation for the adsb packet structure and handling
 
-use crate::adsb_msgs::{AdsbMsgType, AircraftID, UknownMsg, AdsbMsg};
+use crate::adsb_msgs::{AdsbMsgType, AircraftID, UknownMsg, AircarftPosition, AdsbMsg};
 
 
 #[derive(Debug)]
@@ -29,6 +29,8 @@ impl AdsbPacket {
 
         let msg;
         if AircraftID::msg_id_match(msg_type) {
+            msg = AdsbMsgType::AircraftID(AircraftID::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
+        } else if AircarftPosition::msg_id_match(msg_type) {
             msg = AdsbMsgType::AircraftID(AircraftID::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
         } else {
             msg = AdsbMsgType::Uknown(UknownMsg {raw_msg: packet[4..packet.len()].to_vec()});
