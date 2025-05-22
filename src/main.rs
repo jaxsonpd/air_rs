@@ -2,6 +2,11 @@ use num_complex::Complex;
 use soapysdr::{Direction, Device};
 use clap::{Parser, Subcommand};
 
+use std::thread;
+use std::time::Duration;
+
+use std::sync::mpsc::{self, Sender, Receiver};
+
 mod utils;
 use utils::get_magnitude;
 
@@ -48,36 +53,64 @@ fn launch_adsb(device: Option<u32>) {
     dev.set_sample_rate(Direction::Rx, SDR_CHANNEL, 2_000_000.0).expect("couldn't set sample rate");
     println!("Set up sdr device to 1090MHz freq and 2MHz sample");
 
-    let mut stream = dev.rx_stream::<Complex<i16>>(&[SDR_CHANNEL]).expect("Couldn't start stream");
-    let mut buf = vec![Complex::new(0, 0); stream.mtu().expect("Could get buf")];
+    let (tx_raw_sdr, rx_raw_sdr): (Sender<Vec<Complex<i16>>>, Receiver<Vec<Complex<i16>>>) = mpsc::channel();
 
-    stream.activate(None).expect("Couldn't activate stream");
+    let stream_thread = thread::spawn( move || {
+        let mut stream = dev.rx_stream::<Complex<i16>>(&[SDR_CHANNEL]).expect("Couldn't start stream");
 
-    loop {
-        match stream.read(&mut [&mut buf], 2_000_000) {
-            Ok(len) => {
-                let buf = &buf[0..len];
+        stream.activate(None).expect("Couldn't activate stream");
 
-                let mag_vec: Vec<u32> = get_magnitude(buf);
+        let mut buf: Vec<Complex<i16>> = vec![Complex::new(0, 0); stream.mtu().expect("Could get buf")];
+        
+        loop {
+            match stream.read(&mut [&mut buf], 2_000_000) {
+                Ok(len) => {
+                    let buf = buf[0..len].to_vec();
+                    if tx_raw_sdr.send(buf).is_err() {
+                        println!("Raw sdr receiver is dropped");
+                        break;
+                    }
+                }
+                Err(_e) => continue,
+            }
+        }
+    });
 
-                let mut i = 0;
-                while i < (mag_vec.len()-(16+112*2)) {
-                    if let Some((high, _signal_power, _noise_power)) = check_preamble(mag_vec[i..i+16].to_vec()) {
-                        if check_df(mag_vec[i+16..i+16+10].to_vec()) {
-                            if let Some(raw_buf) = extract_manchester(mag_vec[i+16..i+16+112*2].to_vec(), high) {
-                                let packet = AdsbPacket::new(raw_buf);
-                                println!("{}", packet);
-                                i += 16+112*2;
-                            };
+    let (tx_adsb_msgs, rx_adsb_msgs):(Sender<AdsbPacket>, Receiver<AdsbPacket>) = mpsc::channel();
+
+    let process_thread = thread::spawn(move || {
+        while let Ok(buf) = rx_raw_sdr.recv() {
+            let mag_vec: Vec<u32> = get_magnitude(&buf); // Accepts &[Complex<i16>]
+
+            let mut i = 0;
+            while i < (mag_vec.len() - (16 + 112 * 2)) {
+                if let Some((high, _signal_power, _noise_power)) = check_preamble(mag_vec[i..i + 16].to_vec()) {
+                    if check_df(mag_vec[i + 16..i + 16 + 10].to_vec()) {
+                        if let Some(raw_buf) = extract_manchester(mag_vec[i + 16..i + 16 + 112 * 2].to_vec(), high) {
+                            let packet = AdsbPacket::new(raw_buf);
+                            if tx_adsb_msgs.send(packet).is_err() {
+                                println!("Adsb msg receiver is dropped");
+                                break;
+                            }
+                            i += 16 + 112 * 2;
+                            continue;
                         }
                     }
-                    i += 1;
-                    
-                } 
+                }
+                i += 1;
             }
-            Err(_e) => continue // println!("Error reading stream: {}", e),
         }
-    }
+    });
+
+    let display_thread = thread::spawn(move || {
+        while let Ok(packet) = rx_adsb_msgs.recv() {
+            print!("{}", packet);
+        }
+    });
+
+    let _ = stream_thread.join();
+    let _ = process_thread.join();
+    let _ = display_thread.join();
 }
 
 fn main() {
