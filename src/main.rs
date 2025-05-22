@@ -74,26 +74,6 @@ fn launch_adsb(device: Option<u32>) {
                     i += 1;
                     
                 } 
-                // let mut i = 0;
-                // while i < magnitudes.len()-112*2 {
-                //     if let Some((high, signal_power, noise_power)) = check_preamble(magnitudes[i..i+16].to_vec()) {
-                //         if check_df(magnitudes[i+16..i+16+10].to_vec()) {
-                //             println!("f i: {}, h: {}, s: {}, n {}", i, high, signal_power, noise_power);
-                //             // print_preamble(magnitudes[i..i+16].to_vec());
-                //             // print_preamble_graph(magnitudes[i..i+16].to_vec());
-                //             let msg = extract_packet(magnitudes[i+15..i+16+112*2].to_vec(), high);
-                //             for byte in msg.iter() {
-                //                 print!("{:08b} ", byte);
-                //                 print!("{:02x} ", byte);
-                //             }
-                //             plot_adsb_frame(magnitudes[i..i+50].to_vec());
-                //             i+=16+112*2;
-                //         } else {
-                //             i+=1;
-                //         }
-                //     } else {
-                //         i+=1;
-                    // }
             }
             Err(e) => println!("Error reading stream: {}", e),
         }

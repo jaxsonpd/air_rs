@@ -31,7 +31,7 @@ impl AdsbPacket {
         if AircraftID::msg_id_match(msg_type) {
             msg = AdsbMsgType::AircraftID(AircraftID::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
         } else if AircarftPosition::msg_id_match(msg_type) {
-            msg = AdsbMsgType::AircraftID(AircraftID::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
+            msg = AdsbMsgType::AircarftPosition(AircarftPosition::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
         } else {
             msg = AdsbMsgType::Uknown(UknownMsg {raw_msg: packet[4..packet.len()].to_vec()});
         }
