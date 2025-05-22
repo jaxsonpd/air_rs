@@ -75,7 +75,7 @@ fn launch_adsb(device: Option<u32>) {
                     
                 } 
             }
-            Err(e) => println!("Error reading stream: {}", e),
+            Err(_e) => continue // println!("Error reading stream: {}", e),
         }
     }
 }

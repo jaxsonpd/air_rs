@@ -89,7 +89,7 @@ impl std::fmt::Display for AdsbPacket {
         writeln!(f, "Capability      : {}", self.capability)?;
         writeln!(f, "ICAO            : {:06X}", self.icao)?;
         writeln!(f, "Message Type    : {}", self.msg_type)?;
-        writeln!(f, "Message         : {:?}", self.msg)?;
+        writeln!(f, "Message         : {}", self.msg)?;
 
         Ok(())
     }
