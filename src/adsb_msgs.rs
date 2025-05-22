@@ -50,11 +50,11 @@ pub struct AircarftPosition {
     surveillance_status: u8,
     nic_sup: u8,
     /// The altitude in feet
-    altitude: i32,
-    cpr_time: u8,
-    cpr_flag: u8, // odd = 1
-    cpr_latitude: u32,
-    cpr_longitude: u32
+    pub altitude: i32,
+    pub cpr_time: u8,
+    pub cpr_flag: u8, // odd = 1
+    pub cpr_latitude: u32,
+    pub cpr_longitude: u32
 }
 
 impl AircarftPosition {
@@ -109,7 +109,7 @@ impl std::fmt::Display for AircarftPosition {
 pub struct AircraftID {
     raw_msg: [u8; 7],
     msg_type: u8,
-    callsign: String
+    pub callsign: String
 }
 
 fn to_6bit_chunks(input: &[u8]) -> Vec<u8> {

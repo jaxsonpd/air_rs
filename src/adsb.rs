@@ -10,10 +10,10 @@ pub struct AdsbPacket {
     packet: Vec<u8>,
     downlink_format: u8,
     capability: u8,
-    icao: u32,
-    msg_type: u8,
-    msg: AdsbMsgType,
-    time_processed: chrono::prelude::DateTime<Local>
+    pub icao: u32,
+    pub msg_type: u8,
+    pub msg: AdsbMsgType,
+    pub time_processed: chrono::prelude::DateTime<Local>
 }
 
 impl AdsbPacket {

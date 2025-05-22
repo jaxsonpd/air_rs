@@ -18,6 +18,8 @@ use adsb::{check_df, check_preamble, extract_manchester, AdsbPacket};
 
 mod adsb_msgs;
 
+mod aircraft;
+
 const SDR_GAIN: f64 = 49.50;
 const SDR_CHANNEL: usize = 0;
 
