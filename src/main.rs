@@ -107,8 +107,9 @@ fn launch_adsb(device: Option<u32>) {
     let display_thread;
     if true {
         display_thread = thread::spawn(move || {
+            let mut current_aircraft: Vec<aircraft::Aircraft> = Vec::new();
+
             loop {
-                let mut current_aircraft: Vec<aircraft::Aircraft> = Vec::new();
 
                 while let Ok(msg) = rx_adsb_msgs.try_recv() {
                     let mut handled = false;
@@ -122,14 +123,14 @@ fn launch_adsb(device: Option<u32>) {
                     if !handled {
                         current_aircraft.push(aircraft::Aircraft::new(msg.icao));
                         let current_aicraft_len = current_aircraft.len();
-                        current_aircraft[current_aicraft_len].handle_packet(msg.clone());
+                        current_aircraft[current_aicraft_len-1].handle_packet(msg.clone());
                     }
                 }
                 print!("\x1B[2J\x1B[1;1H");
                 println!("  icao  | Callsign | Altitude |");
                 println!("-------------------------------");
                 for plane in current_aircraft.iter() {
-                    println!(" {:06} | {} | {:06} |", plane.icao, plane.callsign, plane.altitude);
+                    println!(" {:06x} | {} | {:06} |", plane.icao, plane.callsign, plane.altitude);
                 }
 
                 thread::sleep(Duration::from_secs(1));
