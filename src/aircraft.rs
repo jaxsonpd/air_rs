@@ -12,12 +12,12 @@ use crate::adsb;
 /// Holder for aircraft information that has been received from adsb
 #[derive(Debug)]
 pub struct Aircraft {
-    icao: u32,
-    callsign: String,
-    altitude: i32,
+    pub icao: u32,
+    pub callsign: String,
+    pub altitude: i32,
     latitude: f64,
     longitude: f64,
-    last_contact: chrono::prelude::DateTime<Local>
+    pub last_contact: chrono::prelude::DateTime<Local>
 }
 
 impl Aircraft {
@@ -31,7 +31,7 @@ impl Aircraft {
         if msg.icao != self.icao {
             return;
         }
-        
+
         match msg.msg {
             AdsbMsgType::AircarftPosition(pos) => {
                 self.altitude = pos.altitude;

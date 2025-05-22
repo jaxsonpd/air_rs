@@ -3,7 +3,7 @@
 /// Jack Duignan (JackpDuignan@gmail.com)
 
 /// Top level enum to hold various message types
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AdsbMsgType {
     AircraftID(AircraftID),
     AircarftPosition(AircarftPosition),
@@ -28,7 +28,7 @@ pub trait AdsbMsg: std::fmt::Debug {
     fn msg_id_match(id: u8) -> bool where Self: Sized;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UknownMsg {
     pub raw_msg: Vec<u8>
 }
@@ -43,7 +43,7 @@ impl std::fmt::Display for UknownMsg {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AircarftPosition {
     raw_msg: [u8; 7],
     msg_type: u8,
@@ -105,7 +105,7 @@ impl std::fmt::Display for AircarftPosition {
     }
 }
 
-#[derive(Debug)] 
+#[derive(Debug, Clone)] 
 pub struct AircraftID {
     raw_msg: [u8; 7],
     msg_type: u8,

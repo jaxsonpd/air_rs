@@ -104,11 +104,40 @@ fn launch_adsb(device: Option<u32>) {
         }
     });
 
-    let display_thread = thread::spawn(move || {
-        while let Ok(packet) = rx_adsb_msgs.recv() {
-            print!("{}", packet);
-        }
-    });
+    let display_thread;
+    if true {
+        display_thread = thread::spawn(move || {
+            let mut current_aircraft: Vec<aircraft::Aircraft> = Vec::new();
+
+            while let Ok(msg) = rx_adsb_msgs.try_recv() {
+                let mut handled = false;
+                for plane in current_aircraft.iter_mut() {
+                    if plane.icao == msg.icao {
+                        plane.handle_packet(msg.clone());
+                        handled = true;
+                        break;
+                    }
+                }
+                if !handled {
+                    current_aircraft.push(aircraft::Aircraft::new(msg.icao));
+                    let current_aicraft_len = current_aircraft.len();
+                    current_aircraft[current_aicraft_len].handle_packet(msg.clone());
+                }
+            }
+
+            println!("  icao  | Callsign | Altitude |");
+            println!("-------------------------------");
+            for plane in current_aircraft.iter() {
+                println!(" {:06} | {} | {:06} |", plane.icao, plane.callsign, plane.altitude);
+            }
+        });
+    } else {
+        display_thread = thread::spawn(move || {
+            while let Ok(packet) = rx_adsb_msgs.recv() {
+                print!("{}", packet);
+            }
+        });
+    }
 
     let _ = stream_thread.join();
     let _ = process_thread.join();

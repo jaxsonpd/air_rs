@@ -4,7 +4,7 @@ use crate::adsb_msgs::{AdsbMsgType, AircraftID, UknownMsg, AircarftPosition, Ads
 
 use chrono::Local;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AdsbPacket {
     raw_manchester: Vec<u16>,
     packet: Vec<u8>,
