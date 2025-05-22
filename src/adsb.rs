@@ -2,6 +2,7 @@
 
 use crate::adsb_msgs::{AdsbMsgType, AircraftID, UknownMsg, AircarftPosition, AdsbMsg};
 
+use chrono::Local;
 
 #[derive(Debug)]
 pub struct AdsbPacket {
@@ -11,7 +12,8 @@ pub struct AdsbPacket {
     capability: u8,
     icao: u32,
     msg_type: u8,
-    msg: AdsbMsgType
+    msg: AdsbMsgType,
+    time_processed: chrono::prelude::DateTime<Local>
 }
 
 impl AdsbPacket {
@@ -44,6 +46,7 @@ impl AdsbPacket {
             icao: icao,
             msg_type: msg_type,
             msg: msg,
+            time_processed: Local::now()
         }
     }
 
@@ -88,8 +91,9 @@ impl std::fmt::Display for AdsbPacket {
         writeln!(f, "Downlink Format : {}", self.downlink_format)?;
         writeln!(f, "Capability      : {}", self.capability)?;
         writeln!(f, "ICAO            : {:06X}", self.icao)?;
+        writeln!(f, "Processed Time  : {}", self.time_processed)?;
         writeln!(f, "Message Type    : {}", self.msg_type)?;
-        writeln!(f, "Message         : {}", self.msg)?;
+        write!(f, "{}", self.msg)?;
 
         Ok(())
     }
