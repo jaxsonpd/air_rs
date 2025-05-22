@@ -37,7 +37,7 @@ impl AircarftPosition {
         if alt_mode_25 {altitude *= 25}
         else {altitude *= 100};
 
-        altitude -= 1000; 
+        altitude = altitude.saturating_sub(1000); 
         AircarftPosition { raw_msg: msg, altitude: altitude, latitude: 0, longitude: 0 }
     }
 }
