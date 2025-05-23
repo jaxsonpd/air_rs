@@ -81,6 +81,10 @@ impl AircarftPosition {
             nic_sup: nic, cpr_time: time, cpr_flag: oddity, 
             altitude: altitude, cpr_latitude: latitude, cpr_longitude: longitude }
     }
+
+    pub fn get_altitude_ft(&self) -> i32{
+        self.altitude
+    }
 }
 
 impl AdsbMsg for AircarftPosition {
@@ -163,6 +167,10 @@ impl AircraftID {
             callsign: callsign
         }
 
+    }
+
+    pub fn get_callsign(&self) -> String {
+        self.callsign.clone()
     }
 }
 

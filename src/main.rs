@@ -113,7 +113,7 @@ fn launch_adsb(device: Option<u32>) {
                 while let Ok(msg) = rx_adsb_msgs.try_recv() {
                     let mut handled = false;
                     for plane in current_aircraft.iter_mut() {
-                        if plane.icao == msg.icao {
+                        if plane.get_icao() == msg.get_icao() {
                             plane.handle_packet(msg.clone());
                             handled = true;
                             break;
@@ -126,11 +126,19 @@ fn launch_adsb(device: Option<u32>) {
                     }
                 }
                 print!("\x1B[2J\x1B[1;1H");
-                println!("  icao  | Callsign | Altitude |");
-                println!("-------------------------------");
+                println!("  icao  | Callsign   | Altitude | Age |");
+                println!("----------------------------------------");
                 for plane in current_aircraft.iter() {
-                    println!(" {:06} | {} | {:06} |", plane.icao, plane.callsign, plane.altitude);
+                    println!(
+                        " {:06} | {:<10} |  {:06}  | {:03} |",
+                        plane.get_icao(),
+                        plane.get_callsign(),
+                        plane.get_altitude_ft(),
+                        plane.get_age()
+                    );
                 }
+
+                current_aircraft.retain(|a| a.get_age() <= 30);
 
                 thread::sleep(Duration::from_secs(1));
             }

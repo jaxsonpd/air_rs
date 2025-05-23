@@ -73,6 +73,10 @@ impl AdsbPacket {
         }
         result
     }
+
+    pub fn get_icao(&self) -> u32 {
+        self.icao
+    }
 }
 
 impl std::fmt::Display for AdsbPacket {
