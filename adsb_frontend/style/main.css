@@ -1,0 +1,30 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    background: black;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+}
+
+#tooltip, #fixedInfo {
+    position: absolute;
+    background: black;
+    color: white;
+    border: 1px solid white;
+    padding: 8px;
+    font-size: 12px;
+    font-family: 'Courier New', Courier, monospace;
+    display: none;
+    pointer-events: none;
+    white-space: pre;
+    z-index: 100;
+}
+
+#fixedInfo {
+    pointer-events: auto;
+}
