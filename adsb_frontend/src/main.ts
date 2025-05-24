@@ -1,5 +1,6 @@
 import { Aircraft } from "./aircraft";
 import { Center, Position, PostionXY } from "./position";
+import { create_demo_aircraft, update_aircraft_demo, create_demo_center } from "./demo";
 
 const pos_canvas = document.getElementById("display") as HTMLCanvasElement | null;
 
@@ -26,20 +27,33 @@ if (!context) {
 
 ctx = context;
 
-let aircraft: Aircraft[] = [
-    new Aircraft("8723", "ANZ100", 35000, new Position(33.9425, 33.9426))
-]
-
-ctx.fillStyle = "red";
-ctx.fillRect(10, 10, 100, 100);
+const demo = true;
+let aircraft: Aircraft[] = [];
 
 let center: Center = new Center(new Position(33.9425, 33.9425), new PostionXY(400, 400), 1);
 
-function animate() {
+if (demo) {
+    aircraft = create_demo_aircraft();
+    center = create_demo_center();
+    center.recenter(canvas.width, canvas.height);
+}
+
+let lastUpdate = performance.now();
+const UPDATE_RATE = 1000;
+
+function animate(timestamp: DOMHighResTimeStamp) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     aircraft.forEach(plane => {
-        plane.draw(ctx, center);
+        plane.update_pos_xy(center);
+        plane.draw(ctx);
     });
-    console.log(canvas?.width, canvas?.height);
+    
+    if (demo && (timestamp - lastUpdate) >= UPDATE_RATE) {
+        update_aircraft_demo(aircraft);
+        lastUpdate = timestamp;
+    }
+
     requestAnimationFrame(animate);
 }
 
@@ -49,4 +63,4 @@ window.addEventListener("resize", () => {
 });
 
 
-animate();
+requestAnimationFrame(animate);
