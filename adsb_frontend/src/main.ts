@@ -35,6 +35,17 @@ canvas.addEventListener('mousemove', e => {
     mouse_y = e.clientY;
 });
 
+canvas.addEventListener('click', e => {
+    const mx = e.clientX;
+    const my = e.clientY;
+    for (const ac of aircraft) {
+        if (ac.check_hover(mx, my)) {
+            ac.toggle_expanded();
+            return;
+        }
+    }
+});
+
 const demo = true;
 let aircraft: Aircraft[] = [];
 

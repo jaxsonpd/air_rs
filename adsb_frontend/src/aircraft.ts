@@ -3,17 +3,15 @@
 import { Position, Center, PostionXY } from "./position";
 
 export class Aircraft {
-    private pos_xy: PostionXY;
-    public last_contact: number;
+    private pos_xy: PostionXY = new PostionXY(0, 0);
+    private extended_pane: boolean = false;
+    public last_contact: number = Date.now();
     constructor(
         public icao: number,
         public callsign: string,
         public altitude: number,
         public pos: Position,
-    ) {
-        this.pos_xy = new PostionXY(0, 0);
-        this.last_contact = Date.now()
-     }
+    ) {}
 
     public update_pos_xy(center: Center) {
         let position: PostionXY = center.get_xy(this.pos);
@@ -31,28 +29,34 @@ export class Aircraft {
         ctx.arc(this.pos_xy.x, this.pos_xy.y, 3, 0, 2 * Math.PI);
         ctx.fill();
 
-        const icao_line = `${this.icao}`;
-        const altitude_line = `${this.altitude} ft`;
-        const padding = 4
-        const text_width = Math.max(ctx.measureText(icao_line).width, ctx.measureText(altitude_line).width)
-        const box_Height = 30;
         const boxX = this.pos_xy.x + 10
         const boxY = this.pos_xy.y - 35;
 
         ctx.strokeStyle = 'white';
         ctx.beginPath();
         ctx.moveTo(this.pos_xy.x + 2, this.pos_xy.y - 2);
-        ctx.lineTo(boxX, boxY + box_Height / 2);
+        ctx.lineTo(boxX, boxY + 35 / 2);
         ctx.stroke();
 
-        ctx.fillStyle = 'black';
-        ctx.fillRect(boxX, boxY, text_width + padding * 2, box_Height);
-        ctx.strokeStyle = 'white';
-        ctx.strokeRect(boxX, boxY, text_width + padding * 2, box_Height);
+        if (!this.extended_pane) {
+            const icao_line = `${this.icao}`;
+            const altitude_line = `${this.altitude} ft`;
+            const padding = 4
+            const text_width = Math.max(ctx.measureText(icao_line).width, ctx.measureText(altitude_line).width)
+            const box_Height = 30;
+            
 
-        ctx.fillStyle = 'white';
-        ctx.fillText(icao_line, boxX + padding, boxY + 12);
-        ctx.fillText(altitude_line, boxX + padding, boxY + 25);
+            ctx.fillStyle = 'black';
+            ctx.fillRect(boxX, boxY, text_width + padding * 2, box_Height);
+            ctx.strokeStyle = 'white';
+            ctx.strokeRect(boxX, boxY, text_width + padding * 2, box_Height);
+
+            ctx.fillStyle = 'white';
+            ctx.fillText(icao_line, boxX + padding, boxY + 12);
+            ctx.fillText(altitude_line, boxX + padding, boxY + 25);
+        } else {
+            this.draw_expanded(ctx);
+        }
     }
 
     /**
@@ -93,6 +97,13 @@ export class Aircraft {
             ctx.fillText(lines[i], boxX + padding, boxY + (12.5 * (i+1)));
             
         }
+    }
+
+    /**
+     * Toggle if to show the expanded pane
+     */
+    public toggle_expanded() {
+        this.extended_pane = !this.extended_pane;
     }
 
     public check_hover(x: number, y: number) {
