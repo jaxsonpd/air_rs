@@ -10,6 +10,22 @@ The planned features are:
 - Maritime Shipping 
 - Weather sats NOAA etc. 
 
+## Show off
+
+Here is the current state of the project:
+
+### ADSB Web GUI
+
+![alt text](/doc/images/current_adsb_gui.png)
+
+### ADSB Terminal Interface Interactive
+
+to come.
+
+### ADSB Terminal Interface 
+
+to come.
+
 ## Usage
 
 The program can be run using:
