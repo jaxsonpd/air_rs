@@ -39,7 +39,7 @@ export class Aircraft {
         ctx.stroke();
 
         if (!this.extended_pane) {
-            const icao_line = `${this.icao}`;
+            const icao_line = `${this.icao.toString(16)}`;
             const altitude_line = `${this.altitude} ft`;
             const padding = 4
             const text_width = Math.max(ctx.measureText(icao_line).width, ctx.measureText(altitude_line).width)
@@ -65,7 +65,7 @@ export class Aircraft {
      */
     public draw_expanded(ctx: CanvasRenderingContext2D) {
         const lines = [
-            `ICAO: ${this.icao}`,
+            `ICAO: ${this.icao.toString(16)}`,
             `Callsign: ${this.callsign}`,
             `Altitude: ${this.altitude} ft`,
             `Last Contact: ${new Date(this.last_contact).toLocaleTimeString()}`,

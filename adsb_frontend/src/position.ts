@@ -21,13 +21,13 @@ export class Position {
         const lat2 = toRad(point2.latitude);
 
         const a = Math.sin(dLat / 2) ** 2 +
-              Math.cos(lat1) * Math.cos(lat2) *
-              Math.sin(dLon / 2) ** 2;
+            Math.cos(lat1) * Math.cos(lat2) *
+            Math.sin(dLon / 2) ** 2;
 
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return R * c;
-    }   
+    }
 
     /**
      * Get the bearing to another point
@@ -43,25 +43,26 @@ export class Position {
 
         const y = Math.sin(dLon) * Math.cos(lat2);
         const x = Math.cos(lat1) * Math.sin(lat2) -
-                Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+            Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
 
         return Math.atan2(y, x); // Radians
     }
 }
 
 export class PostionXY {
-    constructor (
+    constructor(
         public x: number,
         public y: number
-    ) {}
+    ) { }
 }
 
 export class Center {
     constructor(
         public pos: Position,
         public pos_xy: PostionXY,
-        public scale: number,
-    ) {}
+        /// pixels / m
+        public scale_p_p_m: number,
+    ) { }
 
     /**
      * get_xy
@@ -75,10 +76,10 @@ export class Center {
         const dx = distance * Math.sin(bearing); // East-West offset in meters
         const dy = -distance * Math.cos(bearing); // North-South offset in meters (negative so north is up)
 
-        const x = this.pos_xy.x + dx * this.scale;
-        const y = this.pos_xy.y + dy * this.scale;
+        const x = this.pos_xy.x + dx * this.scale_p_p_m;
+        const y = this.pos_xy.y + dy * this.scale_p_p_m;
 
-        return new PostionXY(x, y);         
+        return new PostionXY(x, y);
     }
 
     public recenter(width: number, height: number) {

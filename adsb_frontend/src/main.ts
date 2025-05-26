@@ -62,6 +62,11 @@ const UPDATE_RATE = 1000;
 
 function animate(timestamp: DOMHighResTimeStamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    center.scale_p_p_m = canvas.width / 60000;
+    ctx.beginPath();
+    ctx.moveTo(25, canvas.height - 25);
+    ctx.lineTo(25 + center.scale_p_p_m * 1000, canvas.height - 25);
+    ctx.stroke();
 
     aircraft.forEach(plane => {
         plane.update_pos_xy(center);
@@ -70,7 +75,7 @@ function animate(timestamp: DOMHighResTimeStamp) {
             plane.draw_expanded(ctx);
         }
     });
-    
+
     if (demo && (timestamp - lastUpdate) >= UPDATE_RATE) {
         update_aircraft_demo(aircraft);
         lastUpdate = timestamp;
