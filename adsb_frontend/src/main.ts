@@ -27,6 +27,14 @@ if (!context) {
 
 ctx = context;
 
+let mouse_x: number = 0;
+let mouse_y: number = 0;
+
+canvas.addEventListener('mousemove', e => {
+    mouse_x = e.clientX;
+    mouse_y = e.clientY;
+});
+
 const demo = true;
 let aircraft: Aircraft[] = [];
 
@@ -47,6 +55,9 @@ function animate(timestamp: DOMHighResTimeStamp) {
     aircraft.forEach(plane => {
         plane.update_pos_xy(center);
         plane.draw(ctx);
+        if (plane.check_hover(mouse_x, mouse_y)) {
+            plane.draw_expanded(ctx);
+        }
     });
     
     if (demo && (timestamp - lastUpdate) >= UPDATE_RATE) {
