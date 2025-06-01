@@ -1,6 +1,6 @@
 use num_complex::Complex;
 use soapysdr::{Direction, Device};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use std::thread;
 use std::time::Duration;
@@ -38,10 +38,35 @@ enum Commands {
     Adsb {
         #[arg(short, long)]
         device: Option<u32>,
+
+        #[arg(short = 'm', long = "mode", default_value_t = DisplayMode::Stream)]
+        mode: DisplayMode,
     }
 }
 
-fn launch_adsb(device: Option<u32>) {
+#[derive(ValueEnum, Clone, Debug)]
+enum DisplayMode {
+    Web,
+    Interactive,
+    Stream,
+}
+
+impl std::fmt::Display for DisplayMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name:&'static str;
+        match self {
+            Self::Web => name = "web",
+            Self::Interactive => name = "interactive",
+            Self::Stream => name = "stream"
+        };
+
+        write!(f, "{}", name)?;
+
+        Ok(())
+    }
+}
+
+fn launch_adsb(device: Option<u32>, mode: DisplayMode) {
     println!("Launching adsb with device: {:?}", device);
     // Find RTL-SDR device
     let args = get_sdr_args(device).expect("Couldn't get sdr args");
@@ -105,51 +130,60 @@ fn launch_adsb(device: Option<u32>) {
     });
 
     let display_thread;
-    if true {
-        display_thread = thread::spawn(move || {
-            let mut current_aircraft: Vec<aircraft::Aircraft> = Vec::new();
+    match mode {
+        DisplayMode::Interactive => {
+            display_thread = thread::spawn(move || {
+                let mut current_aircraft: Vec<aircraft::Aircraft> = Vec::new();
 
-            loop {
+                loop {
 
-                while let Ok(msg) = rx_adsb_msgs.try_recv() {
-                    let mut handled = false;
-                    for plane in current_aircraft.iter_mut() {
-                        if plane.get_icao() == msg.get_icao() {
-                            plane.handle_packet(msg.clone());
-                            handled = true;
-                            break;
+                    while let Ok(msg) = rx_adsb_msgs.try_recv() {
+                        let mut handled = false;
+                        for plane in current_aircraft.iter_mut() {
+                            if plane.get_icao() == msg.get_icao() {
+                                plane.handle_packet(msg.clone());
+                                handled = true;
+                                break;
+                            }
+                        }
+                        if !handled {
+                            current_aircraft.push(aircraft::Aircraft::new(msg.icao));
+                            let current_aicraft_len = current_aircraft.len();
+                            current_aircraft[current_aicraft_len-1].handle_packet(msg.clone());
                         }
                     }
-                    if !handled {
-                        current_aircraft.push(aircraft::Aircraft::new(msg.icao));
-                        let current_aicraft_len = current_aircraft.len();
-                        current_aircraft[current_aicraft_len-1].handle_packet(msg.clone());
+                    print!("\x1B[2J\x1B[1;1H");
+                    println!("  icao  | Callsign   | Altitude | Age |");
+                    println!("----------------------------------------");
+                    for plane in current_aircraft.iter() {
+                        println!(
+                            " {:06x} | {:<10} |  {:06}  | {:02}s |",
+                            plane.get_icao(),
+                            plane.get_callsign(),
+                            plane.get_altitude_ft(),
+                            plane.get_age()
+                        );
                     }
-                }
-                print!("\x1B[2J\x1B[1;1H");
-                println!("  icao  | Callsign   | Altitude | Age |");
-                println!("----------------------------------------");
-                for plane in current_aircraft.iter() {
-                    println!(
-                        " {:06x} | {:<10} |  {:06}  | {:02}s |",
-                        plane.get_icao(),
-                        plane.get_callsign(),
-                        plane.get_altitude_ft(),
-                        plane.get_age()
-                    );
-                }
 
-                current_aircraft.retain(|a| a.get_age() <= 30);
+                    current_aircraft.retain(|a| a.get_age() <= 30);
 
-                thread::sleep(Duration::from_secs(1));
-            }
-        });
-    } else {
-        display_thread = thread::spawn(move || {
-            while let Ok(packet) = rx_adsb_msgs.recv() {
-                print!("{}", packet);
-            }
-        });
+                    thread::sleep(Duration::from_secs(1));
+                }
+            });
+        },
+        DisplayMode::Stream => {
+            display_thread = thread::spawn(move || {
+                while let Ok(packet) = rx_adsb_msgs.recv() {
+                    print!("{}", packet);
+                }
+            });
+        }
+        DisplayMode::Web => {
+            display_thread = thread::spawn(move || {
+                println!("Web Display not implemented yet please restart");
+            });
+            
+        }
     }
 
     let _ = stream_thread.join();
@@ -162,6 +196,6 @@ fn main() {
 
     match cli.command {
         Commands::List => list_devices().expect("Couldn't start sdr sub process"),
-        Commands::Adsb {device} => launch_adsb(device),
+        Commands::Adsb {device, mode} => launch_adsb(device, mode),
     };
 }
