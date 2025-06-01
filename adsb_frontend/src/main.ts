@@ -10,12 +10,7 @@ if (!pos_canvas) {
 
 const canvas: HTMLCanvasElement = pos_canvas
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
 
-resizeCanvas();
 
 let ctx: CanvasRenderingContext2D;
 
@@ -26,6 +21,17 @@ if (!context) {
 }
 
 ctx = context;
+
+ctx.font = 'bold 12.5px Courier New'
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx.font = 'bold 12.5px Courier New'
+}
+
+resizeCanvas();
+
 
 let mouse_x: number = 0;
 let mouse_y: number = 0;
@@ -57,16 +63,62 @@ if (demo) {
     center.recenter(canvas.width, canvas.height);
 }
 
+function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
+    const num_planes = aircraft.length;
+    const max_alt = Math.max(...aircraft.map(plane => plane.altitude));
+    const min_alt = Math.min(...aircraft.map(plane => plane.altitude));
+
+    const lines = [
+        `Tracking Stats:`,
+        `# Aircraft: ${num_planes}`,
+        `Max Altitude: ${max_alt}`,
+        `Min Altitude: ${min_alt}`
+    ]
+
+    let box_x = 10;
+    let box_y = 10;
+    let padding = 10;
+    let text_width = 0;
+        
+    lines.forEach(line => {
+        const length = ctx.measureText(line).width;
+        if (length > text_width) {
+            text_width = length
+        }
+    });
+
+    const width = text_width + padding * 2;
+    const height = padding + 15 * lines.length;
+
+    ctx.fillStyle = 'black';
+    ctx.fillRect(box_x, box_y, width, height);
+    ctx.strokeStyle = 'white';
+    ctx.strokeRect(box_x, box_y, width, height);
+
+    ctx.fillStyle = 'white';
+
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], box_x + padding, box_y + (12.5 * (i+1)));
+        
+    }
+
+}
+
 let lastUpdate = performance.now();
 const UPDATE_RATE = 1000;
 
 function animate(timestamp: DOMHighResTimeStamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
     center.scale_p_p_m = canvas.width / 60000;
     ctx.beginPath();
     ctx.moveTo(25, canvas.height - 25);
     ctx.lineTo(25 + center.scale_p_p_m * 1000, canvas.height - 25);
     ctx.stroke();
+
+    if (canvas.width > 200 && canvas.height > 200) {
+        draw_statistics(ctx, aircraft);
+    }
 
     aircraft.forEach(plane => {
         plane.update_pos_xy(center);
