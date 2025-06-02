@@ -15,11 +15,15 @@ mod aircraft;
 mod cli;
 use cli::{Commands, CliArgs};
 
+mod receive;
+use receive::launch_receive;
+
 fn main() {
     let cli = CliArgs::parse();
 
     match cli.command {
         Commands::List => list_devices().expect("Couldn't start sdr sub process"),
         Commands::Adsb {device, mode} => launch_adsb(device, mode),
+        Commands::Receive {device, args} => launch_receive(device, args),
     };
 }
