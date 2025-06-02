@@ -1,10 +1,8 @@
-use std::ops::Add;
-
 /// Module for holding aircraft information for use with displaying functionality
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
+
 use chrono::{Local, TimeZone};
-use clap::Id;
 
 use crate::adsb_msgs::AdsbMsgType;
 use crate::adsb;
