@@ -45,7 +45,7 @@ impl std::fmt::Display for UknownMsg {
 
 #[derive(Debug, Clone)]
 pub struct AircarftPosition {
-    raw_msg: [u8; 7],
+    _raw_msg: [u8; 7],
     msg_type: u8,
     surveillance_status: u8,
     nic_sup: u8,
@@ -77,7 +77,7 @@ impl AircarftPosition {
         let longitude = (((msg[4] & 0b1) as u32) << 16) | ((msg[5] as u32) << 8) | (msg[6] as u32); 
 
         
-        AircarftPosition { raw_msg: msg, msg_type: msg_type, surveillance_status: ss, 
+        AircarftPosition { _raw_msg: msg, msg_type: msg_type, surveillance_status: ss, 
             nic_sup: nic, cpr_time: time, cpr_flag: oddity, 
             altitude: altitude, cpr_latitude: latitude, cpr_longitude: longitude }
     }
@@ -111,7 +111,7 @@ impl std::fmt::Display for AircarftPosition {
 
 #[derive(Debug, Clone)] 
 pub struct AircraftID {
-    raw_msg: [u8; 7],
+    _raw_msg: [u8; 7],
     msg_type: u8,
     pub callsign: String
 }
@@ -162,7 +162,7 @@ impl AircraftID {
 
 
         Self {
-            raw_msg: msg,
+            _raw_msg: msg,
             msg_type: msg_type,
             callsign: callsign
         }
