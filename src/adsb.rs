@@ -8,7 +8,7 @@ use std::time::Duration;
 use std::sync::mpsc::{self, Sender, Receiver};
 
 use num_complex::Complex;
-use soapysdr::{Device, Direction, TxStream};
+use soapysdr::{Device, Direction};
 
 use crate::aircraft::Aircraft;
 use crate::adsb_msgs::{AdsbMsgType, AircraftID, UknownMsg, AircarftPosition, AdsbMsg};
