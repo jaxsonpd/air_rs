@@ -27,6 +27,9 @@ pub enum Commands {
 
         #[arg(short = 'm', long = "mode", default_value_t = DisplayMode::Stream)]
         mode: DisplayMode,
+
+        #[arg(short, long)]
+        playback: Option<String>,
     }
 }
 

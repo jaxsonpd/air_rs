@@ -23,7 +23,7 @@ fn main() {
 
     match cli.command {
         Commands::List => list_devices().expect("Couldn't start sdr sub process"),
-        Commands::Adsb {device, mode} => launch_adsb(device, mode),
+        Commands::Adsb {device, mode, playback} => launch_adsb(device, mode, playback),
         Commands::Receive {device, args} => launch_receive(device, args),
     };
 }

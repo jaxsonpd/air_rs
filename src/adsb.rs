@@ -14,8 +14,8 @@ use crate::aircraft::Aircraft;
 use crate::adsb_msgs::{AdsbMsgType, AircraftID, UknownMsg, AircarftPosition, AdsbMsg};
 
 use crate::cli::DisplayMode;
-use crate::sdr::{get_sdr_args};
-use crate::utils::get_magnitude;
+use crate::sdr::get_sdr_args;
+use crate::utils::{get_magnitude, load_data};
 
 const SDR_GAIN: f64 = 49.50;
 const SDR_CHANNEL: usize = 0;
@@ -253,6 +253,21 @@ fn get_sdr_data_thread(dev: Device, tx: Sender<Vec<Complex<i16>>>) {
     }
 }
 
+fn playback_thread(tx: Sender<Vec<Complex<i16>>>, filename: String) {
+    let data = load_data(filename).expect("Couldn't load playback data file");
+    let mut i: usize = 0;
+    loop {
+        let buf = data[i..i+10000].to_vec();
+        i += 10000;
+        if tx.send(buf).is_err() {
+            println!("Raw sdr receiver is dropped");
+            break;
+        }
+        thread::sleep(Duration::from_secs_f64(1e4/2e6));
+        
+    }
+}
+
 /// Process incoming sdr data sending the result to the display queue
 fn process_sdr_data_thread(rx: Receiver<Vec<Complex<i16>>>, tx: Sender<AdsbPacket>) {
     while let Ok(buf) = rx.recv() {
@@ -320,15 +335,21 @@ fn interactive_display_thread(rx: Receiver<AdsbPacket>) {
 
 
 
-pub fn launch_adsb(device: Option<u32>, mode: DisplayMode) {
+pub fn launch_adsb(device: Option<u32>, mode: DisplayMode, playback: Option<String>) {
     println!("Launching adsb with device: {:?}", device);
     // Find RTL-SDR device
-    let dev = setup_sdr(device);
-
+    
 
     let (tx_raw_sdr, rx_raw_sdr): (Sender<Vec<Complex<i16>>>, Receiver<Vec<Complex<i16>>>) = mpsc::channel();
-    let stream_thread = thread::spawn(move || {get_sdr_data_thread(dev, tx_raw_sdr);});
-
+    let stream_thread;
+    if playback.is_some() {
+        stream_thread = thread::spawn(move || {
+            playback_thread(tx_raw_sdr, playback.unwrap());
+        });
+    } else {
+        let dev = setup_sdr(device);
+        stream_thread = thread::spawn(move || {get_sdr_data_thread(dev, tx_raw_sdr);});
+    }
     let (tx_adsb_msgs, rx_adsb_msgs):(Sender<AdsbPacket>, Receiver<AdsbPacket>) = mpsc::channel();
     let process_thread = thread::spawn(move || {process_sdr_data_thread(rx_raw_sdr, tx_adsb_msgs);});
 

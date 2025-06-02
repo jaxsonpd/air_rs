@@ -42,5 +42,5 @@ pub fn launch_receive(device: Option<u32>, cli_args: cli::ReceiveArgs) {
         }
     }
 
-    save_data(data.as_slice());
+    save_data(data.as_slice()).expect("Failed to save data");
 }
