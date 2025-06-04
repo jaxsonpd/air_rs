@@ -17,6 +17,8 @@ use crate::cli::DisplayMode;
 use crate::sdr::get_sdr_args;
 use crate::utils::{get_magnitude, load_data};
 
+pub mod tui;
+
 const SDR_GAIN: f64 = 49.50;
 const SDR_CHANNEL: usize = 0;
 
