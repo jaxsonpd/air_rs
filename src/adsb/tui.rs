@@ -9,6 +9,7 @@ use ratatui::{
 };
 
 use std::{error::Error, result, sync::mpsc::Receiver};
+use std::time::Duration;
 
 use crate::adsb::AdsbPacket;
 use crate::aircraft::Aircraft;
@@ -102,12 +103,14 @@ impl App {
     /// If your application needs to perform work in between handling events, you can use the
     /// [`event::poll`] function to check if there are any events available with a timeout.
     fn handle_crossterm_events(&mut self) -> Result<(), Box<dyn Error>> {
-        match event::read()? {
-            // it's important to check KeyEventKind::Press to avoid handling key release events
-            Event::Key(key) if key.kind == KeyEventKind::Press => self.on_key_event(key),
-            Event::Mouse(_) => {}
-            Event::Resize(_, _) => {}
-            _ => {}
+        if event::poll(Duration::from_millis(100))? {
+            match event::read()? {
+                // it's important to check KeyEventKind::Press to avoid handling key release events
+                Event::Key(key) if key.kind == KeyEventKind::Press => self.on_key_event(key),
+                Event::Mouse(_) => {}
+                Event::Resize(_, _) => {}
+                _ => {}
+            }
         }
         Ok(())
     }
