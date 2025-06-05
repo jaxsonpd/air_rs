@@ -14,6 +14,7 @@ use cli::{Commands, CliArgs};
 mod receive;
 use receive::launch_receive;
 
+// #[cfg(feature = "tui_test")]
 fn main() {
     let cli = CliArgs::parse();
 
@@ -23,11 +24,3 @@ fn main() {
         Commands::Receive {device, args} => launch_receive(device, args),
     };
 }
-
-// #[cfg(feature = "tui_test")]
-// fn main() {
-//     use std::sync::mpsc::channel;
-//     use crate::adsb::tui::interactive_display_thread_tui;
-//     let (_tx, rx) = channel();
-//     interactive_display_thread_tui(rx);
-// }
