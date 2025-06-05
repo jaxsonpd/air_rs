@@ -60,7 +60,6 @@ impl AdsbPacket {
 
         Self {
             _raw_manchester: raw_buf,
-            _raw_manchester: raw_buf,
             packet: packet.clone(),
             downlink_format: downlink_format,
             capability: capability,
