@@ -10,14 +10,16 @@ use std::sync::mpsc::{self, Sender, Receiver};
 use num_complex::Complex;
 use soapysdr::{Device, Direction};
 
-use crate::aircraft::Aircraft;
-use crate::adsb_msgs::{AdsbMsgType, AircraftID, UknownMsg, AircarftPosition, AdsbMsg};
+mod aircraft;
+mod tui;
+mod msgs;
+
+use aircraft::Aircraft;
+use msgs::{AdsbMsgType, AircraftID, UknownMsg, AircarftPosition, AdsbMsg};
 
 use crate::cli::DisplayMode;
 use crate::sdr::get_sdr_args;
 use crate::utils::{get_magnitude, load_data};
-
-pub mod tui;
 
 const SDR_GAIN: f64 = 49.50;
 const SDR_CHANNEL: usize = 0;

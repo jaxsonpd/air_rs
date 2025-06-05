@@ -12,7 +12,7 @@ use std::{error::Error, result, sync::mpsc::Receiver};
 use std::time::Duration;
 
 use crate::adsb::AdsbPacket;
-use crate::aircraft::Aircraft;
+use crate::adsb::aircraft::Aircraft;
 
 /// The main application which holds the state and logic of the application.
 #[derive(Debug, Default)]

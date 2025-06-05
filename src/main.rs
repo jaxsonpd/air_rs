@@ -8,10 +8,6 @@ use adsb::{launch_adsb};
 mod sdr;
 use sdr::list_devices;
 
-mod adsb_msgs;
-
-mod aircraft;
-
 mod cli;
 use cli::{Commands, CliArgs};
 
