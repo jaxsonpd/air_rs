@@ -23,7 +23,6 @@ impl AdsbPacket {
     /// raw_buf - the raw no simplified modified manchester buffer
     /// 
     pub fn new(packet: Vec<u8>) -> AdsbPacket{
-        
         let downlink_format = packet[0] >> 3;
         let capability = packet[0] & 5;
         let icao: u32 = (packet[1] as u32) << 16 | (packet[2] as u32) << 8 | packet[3] as u32;

@@ -61,7 +61,7 @@ fn get_sdr_data_thread(dev: Device, tx: Sender<Vec<Complex<i16>>>) {
                 let buf = buf[0..len].to_vec();
                 if tx.send(buf).is_err() {
                     println!("Raw sdr receiver is dropped");
-                    break;
+                    return;
                 }
             }
             Err(_e) => continue,
@@ -70,14 +70,16 @@ fn get_sdr_data_thread(dev: Device, tx: Sender<Vec<Complex<i16>>>) {
 }
 
 fn playback_thread(tx: Sender<Vec<Complex<i16>>>, filename: String) {
+    println!("Starting to load from {}", filename);
     let data = load_data(filename).expect("Couldn't load playback data file");
+    println!("Finished load");
     let mut i: usize = 0;
-    loop {
-        let buf = data[i..i+10000].to_vec();
-        i += 10000;
+    while i < data.len()-20000 {
+        let buf = data[i..i+20000].to_vec();
+        i += 20000;
         if tx.send(buf).is_err() {
             println!("Raw sdr receiver is dropped");
-            break;
+            return;
         }
         thread::sleep(Duration::from_secs_f64(1e4/2e6));
         
@@ -87,25 +89,25 @@ fn playback_thread(tx: Sender<Vec<Complex<i16>>>, filename: String) {
 /// Process incoming sdr data sending the result to the display queue
 fn process_sdr_data_thread(rx: Receiver<Vec<Complex<i16>>>, tx: Sender<AdsbPacket>) {
     while let Ok(buf) = rx.recv() {
-        let mag_vec: Vec<u32> = get_magnitude(&buf); // Accepts &[Complex<i16>]
+        let mags: Vec<u32> = get_magnitude(&buf); // Accepts &[Complex<i16>]
 
-        let mut i = 0;
-        while i < (mag_vec.len() - (16 + 112 * 2)) {
-            if let Some((high, _signal_power, _noise_power)) 
-                    = demod::check_for_adsb_packet(mag_vec[i..i + 32]
+        for mut i in 0..(mags.len() - (16 + 112 * 2)) {
+            let check_mags: [u32; 32] =  mags[i..i + 32]
                             .try_into()
-                            .expect("Bad packet length passed to adsb checker")) {
-                // if let Some(raw_buf) = extract_manchester(mag_vec[i + 16..i + 16 + 112 * 2].to_vec(), high) {
-                //     let packet = AdsbPacket::new(raw_buf);
-                //     if tx.send(packet).is_err() {
-                //         println!("Adsb msg receiver is dropped");
-                //         break;
-                //     }
-                //     i += 16 + 112 * 2;
-                //     continue;
-                // }
+                            .expect("Bad packet length passed to adsb checker");
+            
+            if let Some((high, _signal_power, _noise_power)) 
+                    = demod::check_for_adsb_packet(check_mags) {
+                println!("{}", i);
+                if let Some(packet_buf) = demod::extract_packet(mags[i+16..i+112*2+16].to_vec(), high) {
+                    let packet = AdsbPacket::new(packet_buf);
+                    if tx.send(packet).is_err() {
+                        println!("Adsb msg receiver is dropped");
+                        return;
+                    }
+                    i += 16 + 112 * 2;
+                }
             }
-            i += 1;
         }
     }
 }

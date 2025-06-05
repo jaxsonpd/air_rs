@@ -29,57 +29,53 @@ pub fn check_for_adsb_packet(buf: [u32; 32]) -> Option<(u32, i32, i32)> {
         }
     }
 
+    // The preamble is followed by DF which needs to be 17 for adsb
+    //
+    // This translates too:
+    //   1       0       0       0       1
+    // +   -   -   +   -   +   -   +   +   -
+    // 0  0.5  1  1.5  2  2.5  3  3.5  4  4.5
+    // 0   1   2   3   4   5   6   7   8   9 
+    let lows = [1, 2, 4, 6, 9];
+    let highs = [0, 3, 5, 7, 8];
+
+    for high in highs.iter() {
+        for low in lows.iter() {
+            if buf[*high + 16 as usize] < buf[*low + 16 as usize] {
+                return None;
+            }
+        }
+    }
+
     Some(((min as f32 * 0.9) as u32, 0, 0))
 }
 
-// pub fn check_preamble(buf: Vec<u32>) -> Option<(u32, i32, i32)> {
-//     assert!(buf.len() == 16);
+/// Extract a packet from a buffer of magnitude values
+/// 
+/// `buf` - the buffer to extract
+/// `high` - the high level to use
+/// 
+/// returns byte vector if packet is correct and worth looking at
+pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
+    let extracted_manchester = extract_manchester(buf.to_vec(), (high as f64 * 0.90) as u32)?;
+    println!("Manchester extracted for {:?}", extracted_manchester);
 
-//     // Adsb pre amble has the following form:
-//     //
-//     // +   -   +   -   -   -   -   +   -   +   -   -   -   -   -   -
-//     // 0  0.5  1  1.5  2  2.5  3  3.5  4  4.5  5  5.5  6  6.5  7  7.5
-//     // 0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15 
-//     let lows = [1, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15];
-//     let highs = [0, 2, 7, 9];
-//     let mut min = 800000;
+    let packet = decode_packet(extracted_manchester)?;
+    println!("Manchester packet extracted for {:?}", packet);
 
-//     for high in highs.iter() {
-//         for low in lows.iter() {
-//             if buf[*high as usize] < buf[*low as usize] {
-//                 return None;
-//             }
-//         }
-//         if buf[*high as usize] < min {
-//             min = buf[*high as usize];
-//         }
-//     }
+    let len = packet.len();
+    let calced_crc = get_adsb_crc(&packet[0..len-3].to_vec());
+    let packet_crc = ((packet[len-1] as u32) << 16) | 
+                            ((packet[len-2] as u32) << 16) |
+                            ((packet[len-3] as u32) << 16);
+    
+    if calced_crc != packet_crc {
+        println!("Bad crc found for {:?}", packet);
+        return None;
+    }
 
-
-//     Some(((min as f32 * 0.9) as u32, 0, 0))
-// }
-
-// pub fn check_df(buf: Vec<u32>) -> bool {
-//     // The preamble is followed by DF which needs to be 17 for adsb
-//     //
-//     // This translates too:
-//     //   1       0       0       0       1
-//     // +   -   -   +   -   +   -   +   +   -
-//     // 0  0.5  1  1.5  2  2.5  3  3.5  4  4.5
-//     // 0   1   2   3   4   5   6   7   8   9 
-//     let lows = [1, 2, 4, 6, 9];
-//     let highs = [0, 3, 5, 7, 8];
-
-//     for high in highs.iter() {
-//         for low in lows.iter() {
-//             if buf[*high as usize] < buf[*low as usize] {
-//                 return false;
-//             }
-//         }
-//     }
-
-//     true
-// }
+    Some(packet)
+}
 
 /// Extract the manchester values of a packet
 /// 
@@ -92,7 +88,8 @@ fn extract_manchester(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
     let mut result = Vec::with_capacity(14);
     let mut errors = 0;
 
-    for block_start in (0..224).step_by(16) {
+    let buf_len = buf.len();
+    for block_start in (0..buf_len).step_by(16) {
         let mut symbol: u16 = 0;
 
         for bit in 0..8 {
@@ -101,14 +98,13 @@ fn extract_manchester(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
             let first = buf[i] > high;
             let second = buf[i + 1] > high;
 
-            match (first, second) {
-                (true, false) => symbol |= 1 << (7 - bit),
-                (false, true) => (), // already 0
-                _ => {
-                    errors += 1;
-                    if errors > 2 {
-                        return None;
-                    }
+            if first != second {
+                symbol |= (first as u16) << (14 - bit*2);
+                symbol |= (second as u16) << (15 - bit*2);
+            } else {
+                errors += 1;
+                if errors > 2 {
+                    return None;
                 }
             }
         }
@@ -136,9 +132,9 @@ fn decode_packet(raw_buf: Vec<u16>) -> Option<Vec<u8>> {
             let lo = (encoded >> (14 - i * 2)) & 1;
 
             match (hi, lo) {
-                (1, 0) => byte |= 1 << (7 - i),
-                (0, 1) => (),
-                _ => return None, // invalid Manchester bit pair
+                (0, 1) => byte |= 1 << (7 - i),
+                (1, 0) => (),
+                _ => (), // invalid Manchester bit pair
             }
         }
 
@@ -183,29 +179,6 @@ fn get_adsb_crc(buf: &Vec<u8>) -> u32 {
     }
 
     remainder
-}
-
-/// Extract a packet from a buffer of magnitude values
-/// 
-/// buf - the buffer to extract
-/// high - the high level to use
-/// 
-/// returns byte vector if packet is correct and worth looking at
-pub fn extract_packet(buf: [u32; 224], high: u32) -> Option<Vec<u8>> {
-    let extracted_manchester = extract_manchester(buf.to_vec(), high)?;
-
-    let packet = decode_packet(extracted_manchester)?;
-    let len = packet.len();
-    let calced_crc = get_adsb_crc(&packet);
-    let packet_crc = ((packet[len-1] as u32) << 16) | 
-                            ((packet[len-2] as u32) << 16) |
-                            ((packet[len-3] as u32) << 16);
-    
-    if calced_crc != packet_crc {
-        return None;
-    }
-
-    Some(packet)
 }
 
 #[cfg(test)]
@@ -333,11 +306,11 @@ mod tests {
 
     #[test]
     fn test_extract_packet_bad_crc() {
-        let mut buf = [0u32; 224];
+        let mut buf = Vec::new();
         let high = 100;
         for i in (0..224).step_by(2) {
-            buf[i] = 120;
-            buf[i + 1] = 50;
+            buf.push(120);
+            buf.push(50);
         }
 
         // This will decode to a valid pattern but incorrect CRC
