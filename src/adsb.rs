@@ -358,7 +358,7 @@ pub fn launch_adsb(device: Option<u32>, mode: DisplayMode, playback: Option<Stri
     let display_thread;
     match mode {
         DisplayMode::Interactive => {
-            display_thread = thread::spawn(move || {interactive_display_thread(rx_adsb_msgs);});
+            display_thread = thread::spawn(move || {tui::interactive_display_thread_tui(rx_adsb_msgs);});
         },
         DisplayMode::Stream => {
             display_thread = thread::spawn(move || {
@@ -375,7 +375,8 @@ pub fn launch_adsb(device: Option<u32>, mode: DisplayMode, playback: Option<Stri
         }
     }
 
-    let _ = stream_thread.join();
-    let _ = process_thread.join();
+    // let _ = stream_thread.join();
+    // let _ = process_thread.join();
     let _ = display_thread.join();
+
 }
