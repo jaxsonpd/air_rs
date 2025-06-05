@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 /// A thread to receive data and save it to a file
 
 use num_complex::Complex;
@@ -42,5 +44,5 @@ pub fn launch_receive(device: Option<u32>, cli_args: cli::ReceiveArgs) {
         }
     }
 
-    save_data(data.as_slice()).expect("Failed to save data");
+    save_data(data.as_slice(), format!("data_{}_{}_{}", cli_args.frequency, cli_args.sample_rate, cli_args.gain)).expect("Failed to save data");
 }
