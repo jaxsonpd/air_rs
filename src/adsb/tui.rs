@@ -4,14 +4,14 @@
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rows},
-    style::{Style, Stylize}, text::Line, widgets::{Block, Cell, Paragraph, Row, Table}, DefaultTerminal, Frame
+    layout::{Constraint, Direction, Layout},
+    style::{Stylize}, text::Line, widgets::{Block, Cell, Row, Table}, DefaultTerminal, Frame
 };
 
-use std::{error::Error, result, sync::mpsc::Receiver};
+use std::{error::Error, sync::mpsc::Receiver};
 use std::time::Duration;
 
-use crate::adsb::AdsbPacket;
+use crate::adsb::packet::AdsbPacket;
 use crate::adsb::aircraft::Aircraft;
 
 /// The main application which holds the state and logic of the application.
@@ -72,10 +72,6 @@ impl App {
             .bold()
             .light_magenta()
             .centered();
-        // Build the footer (styled like a title)
-        let footer = Paragraph::new("Updated every 5 seconds")
-            .block(Block::bordered().title("Footer"))
-            .style(Style::default());
         
         let rows = self.aircraft.iter().map(|plane| {
             Row::new(vec![Cell::from(format!("{:x}", plane.get_icao())), 

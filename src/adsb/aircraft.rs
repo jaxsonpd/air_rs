@@ -2,7 +2,7 @@
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
 
-use chrono::{Local, TimeZone};
+use chrono::{Local};
 
 use crate::adsb::msgs::AdsbMsgType;
 use crate::adsb;

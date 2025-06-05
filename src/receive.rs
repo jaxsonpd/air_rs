@@ -1,6 +1,6 @@
-use std::fmt::format;
-
-/// A thread to receive data and save it to a file
+/// A sub program that allows for easy capture of sdr information for later use
+/// 
+/// Author Jack Duignan (JackpDuignan@gmail.com)
 
 use num_complex::Complex;
 
