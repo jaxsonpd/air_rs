@@ -4,15 +4,15 @@
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rows},
-    style::Stylize, text::Line, widgets::{Block, Cell, Paragraph, Row, Table}, DefaultTerminal, Frame
+    layout::{Constraint, Direction, Layout},
+    style::{Stylize}, text::Line, widgets::{Block, Cell, Row, Table}, DefaultTerminal, Frame
 };
 
-use std::{error::Error, result, sync::mpsc::Receiver};
+use std::{error::Error, sync::mpsc::Receiver};
 use std::time::Duration;
 
-use crate::adsb::AdsbPacket;
-use crate::aircraft::Aircraft;
+use crate::adsb::packet::AdsbPacket;
+use crate::adsb::aircraft::Aircraft;
 
 /// The main application which holds the state and logic of the application.
 #[derive(Debug, Default)]
@@ -26,7 +26,7 @@ impl App {
     pub fn new() -> Self {
         App {
             running: false,
-            aircraft: vec![Aircraft::new(0xcBd49), Aircraft::new(0xcBd46)]
+            aircraft: Vec::new()
         }
     }
 
@@ -62,8 +62,8 @@ impl App {
             .direction(Direction::Vertical)
             .margin(1)
             .constraints([
-                Constraint::Length(3),
                 Constraint::Min(0),
+                // Constraint::Length(3),
             ])
             .split(frame.area());
 
@@ -72,9 +72,6 @@ impl App {
             .bold()
             .light_magenta()
             .centered();
-        let header = Paragraph::new("Press `Esc`, `Ctrl-C`, or `q` to quit")
-            .block(Block::bordered().title(title));
-        frame.render_widget(header, layout[0]);
         
         let rows = self.aircraft.iter().map(|plane| {
             Row::new(vec![Cell::from(format!("{:x}", plane.get_icao())), 
@@ -93,9 +90,10 @@ impl App {
 
         let table = Table::new(rows, column_widths)
             .header(Row::new(vec!["ICAO", "Callsign", "Altitude", "Velocity", "Age"]).bold())
-            .block(Block::bordered().title("ADS-B Messages"));
+            .block(Block::bordered().title(title));
 
-        frame.render_widget(table, layout[1]);
+        frame.render_widget(table, layout[0]);
+        // frame.render_widget(footer, layout[1]);
     }
 
         /// Reads the crossterm events and updates the state of [`App`].

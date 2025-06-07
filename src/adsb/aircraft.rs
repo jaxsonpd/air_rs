@@ -2,9 +2,9 @@
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
 
-use chrono::{Local, TimeZone};
+use chrono::{Local};
 
-use crate::adsb_msgs::AdsbMsgType;
+use crate::adsb::msgs::AdsbMsgType;
 use crate::adsb;
 
 /// Holder for aircraft information that has been received from adsb
