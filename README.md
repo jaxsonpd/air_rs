@@ -1,12 +1,15 @@
-# SDR Interface
+# AIR_RS
 
-This project aims to provide an interface to communicate with sdr's to perform common functions easily.
+This project aims to provide a suite of common applications utilising software defined radios (sdr).
 This is intended to be an all in one program that allows the users to use
 an sdr with minimal setup. THe key differentiator from programs like sdr++ being that you just start the program and go no plugin needed. 
 
+Currently the program supports:
+
+- ADS-B, stream, interactive tui and a web ui comming.
+- 
 The planned features are:
 
-- ADS-B - Some what implemented
 - Maritime Shipping 
 - Weather sats NOAA etc. 
 
@@ -45,6 +48,8 @@ The main rust program works using three threads:
 1. A thread that handles receiving data from the sdr.
 2. A thread that handles converting that data from complex frequency values to bits then into the adsbpacket struct.
 3. The display thread which serves the data to the user using several different methods.
+
+These threads can then be swapped out based on the ui and processing methods needed.
 
 ## Reference Material
 
