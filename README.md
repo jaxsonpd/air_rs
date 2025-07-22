@@ -2,32 +2,30 @@
 
 This project aims to provide a suite of common applications utilising software defined radios (sdr).
 This is intended to be an all in one program that allows the users to use
-an sdr with minimal setup. THe key differentiator from programs like sdr++ being that you just start the program and go no plugin needed. 
+an sdr with minimal setup. The key differentiator from programs like sdr++ being that you just start the program and go no plugins needed. 
 
 Currently the program supports:
 
 - ADS-B, stream, interactive tui and a web ui comming.
-- 
+
 The planned features are:
 
 - Maritime Shipping 
 - Weather sats NOAA etc. 
 
-## Show off
+## ADSB Web GUI
 
-Here is the current state of the project:
-
-### ADSB Web GUI
+Currently the Web GUI is not intergrated with the rest of the design as the GPS packets are not stable enough to provide accurate positioning. This UI lets the user view all information about spesific transponding devices aswell as view there location on a minimalistic UI. The web application writen in typescript communicates with the main program over a web socket where serialised packet information is sent directly to it. The web application handles all packet matching to spesific devices itself to reduce the load on the reciver (main rust) program.
 
 ![alt text](/doc/images/current_adsb_gui.png)
 
 ### ADSB Terminal Interface Interactive
 
-to come.
+The terminal interface interactive mode displays the currently recived transponders in an updating table format. This displays infomration collated from several different packets that all relate to a single device in a simple and easy to see way.
 
-### ADSB Terminal Interface 
+### ADSB Terminal Interface Stream 
 
-to come.
+The terminal interface stream mode displays the raw decoded packets as they are received directly to the user in a scrolling stream. This mode is intended to allow other programs that cannot use the web sockets for the GUI to interact with the program. 
 
 ## Usage
 
