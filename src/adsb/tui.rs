@@ -83,9 +83,9 @@ impl App {
         let column_widths = [
             Constraint::Length(6),
             Constraint::Length(10),
-            Constraint::Length(8),
-            Constraint::Length(8),
-            Constraint::Length(8),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
         ];
 
         let table = Table::new(rows, column_widths)

@@ -70,10 +70,7 @@ fn get_sdr_data_thread(dev: Device, tx: Sender<Vec<Complex<i16>>>) {
     }
 }
 
-fn playback_thread(tx: Sender<Vec<Complex<i16>>>, filename: String) {
-    println!("Starting to load from {}", filename);
-    let data = load_data(filename).expect("Couldn't load playback data file");
-    println!("Finished load");
+fn playback_thread(tx: Sender<Vec<Complex<i16>>>, data: Vec<Complex<i16>>) {
     let mut i: usize = 0;
     while i < data.len()-20000 {
         let buf = data[i..i+20000].to_vec();
@@ -172,8 +169,12 @@ pub fn launch_adsb(device: Option<u32>, mode: DisplayMode, playback: Option<Stri
     let (tx_raw_sdr, rx_raw_sdr): (Sender<Vec<Complex<i16>>>, Receiver<Vec<Complex<i16>>>) = mpsc::channel();
     let _stream_thread;
     if playback.is_some() {
+        println!("Starting data load from playback file: {}", playback.as_ref().unwrap());
+        let data = load_data(playback.unwrap()).expect("Couldn't load playback data file");
+        println!("Loaded {} samples from playback file", data.len());
+        
         _stream_thread = thread::spawn(move || {
-            playback_thread(tx_raw_sdr, playback.unwrap());
+            playback_thread(tx_raw_sdr, data);
         });
     } else {
         let dev = setup_sdr(device);
