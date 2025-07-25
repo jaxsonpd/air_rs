@@ -6,7 +6,7 @@
 #[derive(Debug, Clone)]
 pub enum AdsbMsgType {
     AircraftID(AircraftID),
-    AircarftPosition(AircarftPosition),
+    AircraftPosition(AircraftPosition),
     Uknown(UknownMsg)
 }
 
@@ -15,7 +15,7 @@ impl std::fmt::Display for AdsbMsgType {
         match self {
             AdsbMsgType::AircraftID(id) =>
                 write!(f, "{}", id),
-            AdsbMsgType::AircarftPosition(pos) =>
+            AdsbMsgType::AircraftPosition(pos) =>
                 write!(f, "{}", pos),
             AdsbMsgType::Uknown(msg) =>
                 write!(f, "{}", msg),
@@ -43,72 +43,103 @@ impl std::fmt::Display for UknownMsg {
     }
 }
 
+/// CPR message parity (even or odd)
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CprFormat {
+    Even,
+    Odd,
+}
+
+/// Aircraft position message
 #[derive(Debug, Clone)]
-pub struct AircarftPosition {
-    _raw_msg: [u8; 7],
+pub struct AircraftPosition {
+    #[allow(dead_code)]
+    raw_msg: [u8; 7],
     msg_type: u8,
     surveillance_status: u8,
-    nic_sup: u8,
+    nic_supplement: u8,
     /// The altitude in feet
     pub altitude: i32,
     pub cpr_time: u8,
-    pub cpr_flag: u8, // odd = 1
+    pub cpr_format: CprFormat,
     pub cpr_latitude: u32,
-    pub cpr_longitude: u32
+    pub cpr_longitude: u32,
 }
 
-impl AircarftPosition {
+impl AircraftPosition {
     pub fn new(msg: [u8; 7]) -> Self {
-        let alt_mode_25: bool = msg[1] & (1 << 0) == 1;
-        let mut altitude = (((msg[1] >> 1) as i32) << 4) | ((((msg[2]) & 0xF0) as i32) >> 4); 
+        let alt_mode_25 = msg[1] & (1 << 0) == 1;
+        let mut altitude = (((msg[1] >> 1) as i32) << 4) | (((msg[2] & 0xF0) as i32) >> 4);
 
-        if alt_mode_25 {altitude *= 25}
-        else {altitude *= 100};
-
-        altitude -= 1000; 
+        altitude *= if alt_mode_25 { 25 } else { 100 };
+        altitude -= 1000;
 
         let msg_type = (msg[0] & 0b1111_1000) >> 3;
-        let ss = (msg[0] & 0b110) >> 1;
-        let nic = msg[0] & 0b1;
-        let time = (msg[2] & 0b1000) >> 3;
-        let oddity = (msg[2] & 0b0100) >> 2;
+        let ss = (msg[0] & 0b0000_0110) >> 1;
+        let nic = msg[0] & 0b0000_0001;
+        let time = (msg[2] & 0b0000_1000) >> 3;
+        let odd_flag = (msg[2] & 0b0000_0100) >> 2;
+        let cpr_format = if odd_flag == 1 { CprFormat::Odd } else { CprFormat::Even };
 
-        let latitude = (((msg[2] & 0b11) as u32) << 15) | ((msg[3] as u32) << 7) | (((msg[4] & 0b1111_1110) >> 1) as u32); 
-        let longitude = (((msg[4] & 0b1) as u32) << 16) | ((msg[5] as u32) << 8) | (msg[6] as u32); 
+        let latitude = (((msg[2] & 0b11) as u32) << 15)
+            | ((msg[3] as u32) << 7)
+            | ((msg[4] as u32 & 0b1111_1110) >> 1);
+        let longitude = (((msg[4] & 0b1) as u32) << 16)
+            | ((msg[5] as u32) << 8)
+            | (msg[6] as u32);
 
-        
-        AircarftPosition { _raw_msg: msg, msg_type: msg_type, surveillance_status: ss, 
-            nic_sup: nic, cpr_time: time, cpr_flag: oddity, 
-            altitude: altitude, cpr_latitude: latitude, cpr_longitude: longitude }
+        Self {
+            raw_msg: msg,
+            msg_type,
+            surveillance_status: ss,
+            nic_supplement: nic,
+            altitude,
+            cpr_time: time,
+            cpr_format,
+            cpr_latitude: latitude,
+            cpr_longitude: longitude,
+        }
     }
 
-    pub fn get_altitude_ft(&self) -> i32{
+    /// Returns the altitude in feet
+    pub fn get_altitude_ft(&self) -> i32 {
         self.altitude
     }
-}
 
-impl AdsbMsg for AircarftPosition {
-    fn msg_id_match(id: u8) -> bool {
-        9 <= id && id <= 18 
+    /// Returns the cpr format
+    pub fn get_cpr_format(&self) -> CprFormat {
+        self.cpr_format
+    }
+
+    /// Returns the cpr latitude and longitude as a tuple
+    pub fn get_cpr_position(&self) -> (u32, u32) {
+        (self.cpr_latitude, self.cpr_longitude)
     }
 }
 
-impl std::fmt::Display for AircarftPosition {
+// Trait Implementations
+impl AdsbMsg for AircraftPosition {
+    fn msg_id_match(id: u8) -> bool {
+        (9..=18).contains(&id)
+    }
+}
+
+impl std::fmt::Display for AircraftPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Message:")?;
         writeln!(f, "Type                : {} (Position)", self.msg_type)?;
         writeln!(f, "Surveillance Status : {}", self.surveillance_status)?;
-        writeln!(f, "NIC Supplement      : {}", self.nic_sup)?;
+        writeln!(f, "NIC Supplement      : {}", self.nic_supplement)?;
         writeln!(f, "Altitude (ft)       : {}", self.altitude)?;
         writeln!(f, "CPR Time            : {}", self.cpr_time)?;
-        writeln!(f, "CPR polarity        : {}", self.cpr_flag)?;
-        writeln!(f, "Raw Latititude      : {}", self.cpr_latitude)?;
+        writeln!(f, "CPR Format          : {:?}", self.cpr_format)?;
+        writeln!(f, "Raw Latitude        : {}", self.cpr_latitude)?;
         writeln!(f, "Raw Longitude       : {}", self.cpr_longitude)?;
-
         Ok(())
     }
 }
 
+/// Aircraft ID message
 #[derive(Debug, Clone)] 
 pub struct AircraftID {
     _raw_msg: [u8; 7],
@@ -215,7 +246,7 @@ mod tests {
     fn test_aircraft_position_alt_25() {
         let data: [u8; 7] = [0x58, 0xC3, 0x82, 0xD6, 0x90, 0xC8, 0xAC];
 
-        let pos = AircarftPosition::new(data);
+        let pos = AircraftPosition::new(data);
         assert_eq!(pos.altitude, 38000);
     }
 
@@ -223,7 +254,7 @@ mod tests {
     fn test_aircraft_position_alt_100() {
         let data: [u8; 7] = [0x58, 0xC2, 0x82, 0xD6, 0x90, 0xC8, 0xAC];
 
-        let pos = AircarftPosition::new(data);
+        let pos = AircraftPosition::new(data);
         assert_eq!(pos.altitude, 155000);
     }
 
@@ -231,7 +262,7 @@ mod tests {
     fn test_aircraft_position_neg_alt_100() {
         let data: [u8; 7] = [0x58, 0x01, 0x02, 0xD6, 0x90, 0xC8, 0xAC];
 
-        let pos = AircarftPosition::new(data);
+        let pos = AircraftPosition::new(data);
         assert_eq!(pos.altitude, -1000);
     }
 
@@ -239,7 +270,7 @@ mod tests {
     fn test_aircraft_position_neg_alt_100_1() {
         let data: [u8; 7] = [0x58, 0x01, 0x12, 0xD6, 0x90, 0xC8, 0xAC];
 
-        let pos = AircarftPosition::new(data);
+        let pos = AircraftPosition::new(data);
         assert_eq!(pos.altitude, -975);
     }
 
@@ -247,33 +278,33 @@ mod tests {
     fn test_aircraft_position_flags_even_frame() {
         let data: [u8; 7] = [0x58, 0xC3, 0x82, 0xD6, 0x90, 0xC8, 0xAC];
 
-        let pos = AircarftPosition::new(data);
+        let pos = AircraftPosition::new(data);
 
         assert_eq!(pos.msg_type, 11);
         assert_eq!(pos.surveillance_status, 0);
-        assert_eq!(pos.nic_sup, 0);
+        assert_eq!(pos.nic_supplement, 0);
         assert_eq!(pos.cpr_time, 0);
-        assert_eq!(pos.cpr_flag, 0);
+        assert_eq!(pos.cpr_format, CprFormat::Even);
     }
 
     #[test]
     fn test_aircraft_position_flags_odd_frame() {
         let data: [u8; 7] = [0x58, 0xc3, 0x86, 0x43, 0x5c, 0xc4, 0x12];
 
-        let pos = AircarftPosition::new(data);
+        let pos = AircraftPosition::new(data);
 
         assert_eq!(pos.msg_type, 11);
         assert_eq!(pos.surveillance_status, 0);
-        assert_eq!(pos.nic_sup, 0);
+        assert_eq!(pos.nic_supplement, 0);
         assert_eq!(pos.cpr_time, 0);
-        assert_eq!(pos.cpr_flag, 1);
+        assert_eq!(pos.cpr_format, CprFormat::Odd);
     }
 
     #[test]
     fn test_aircraft_position_flags_even_pos() {
         let data: [u8; 7] = [0x58, 0xC3, 0x82, 0xD6, 0x90, 0xC8, 0xAC];
 
-        let pos = AircarftPosition::new(data);
+        let pos = AircraftPosition::new(data);
 
         assert_eq!(pos.cpr_latitude, 93000);
         assert_eq!(pos.cpr_longitude, 51372);
@@ -283,7 +314,7 @@ mod tests {
     fn test_aircraft_position_odd_frame_pos() {
         let data: [u8; 7] = [0x58, 0xc3, 0x86, 0x43, 0x5c, 0xc4, 0x12];
 
-        let pos = AircarftPosition::new(data);
+        let pos = AircraftPosition::new(data);
 
         assert_eq!(pos.cpr_latitude, 74158);
         assert_eq!(pos.cpr_longitude, 50194);

@@ -16,7 +16,6 @@ mod demod;
 mod crc;
 
 use packet::AdsbPacket;
-use aircraft::Aircraft;
 
 use crate::cli::DisplayMode;
 use crate::sdr::get_sdr_args;
@@ -93,22 +92,22 @@ fn process_sdr_data_thread(rx: Receiver<Vec<Complex<i16>>>, tx: Sender<AdsbPacke
     while let Ok(buf) = rx.recv() {
         let mags: Vec<u32> = get_magnitude(&buf); // Accepts &[Complex<i16>]
         
-        for mut i in 0..(mags.len() - (16 + 112 * 2)) {
-            let check_mags: [u32; 32] =  mags[i..i + 32]
+        for mut _i in 0..(mags.len() - (16 + 112 * 2)) {
+            let check_mags: [u32; 32] =  mags[_i.._i + 32]
                             .try_into()
                             .expect("Bad packet length passed to adsb checker");
             
             if let Some((high, _signal_power, _noise_power)) 
                     = demod::check_for_adsb_packet(check_mags) {
                 num_processed += 1;
-                if let Some(packet_buf) = demod::extract_packet(mags[i+16..i+112*2+16].to_vec(), high) {
+                if let Some(packet_buf) = demod::extract_packet(mags[_i+16.._i+112*2+16].to_vec(), high) {
                     let packet = AdsbPacket::new(packet_buf);
                     if tx.send(packet).is_err() {
                         println!("Adsb msg receiver is dropped");
                         return;
                     }
                     num_good += 1;
-                    i += 16 + 112 * 2;
+                    _i += 16 + 112 * 2;
                 }
             }
         }
@@ -117,46 +116,6 @@ fn process_sdr_data_thread(rx: Receiver<Vec<Complex<i16>>>, tx: Sender<AdsbPacke
     }
     println!("Processed: {}, Good: {}", num_processed, num_good);
     drop(tx);
-}
-
-/// Display recivied packets in an interactive table format
-fn interactive_display_thread(rx: Receiver<AdsbPacket>) {
-    let mut current_aircraft: Vec<Aircraft> = Vec::new();
-
-    loop {
-
-        while let Ok(msg) = rx.try_recv() {
-            let mut handled = false;
-            for plane in current_aircraft.iter_mut() {
-                if plane.get_icao() == msg.get_icao() {
-                    plane.handle_packet(msg.clone());
-                    handled = true;
-                    break;
-                }
-            }
-            if !handled {
-                current_aircraft.push(Aircraft::new(msg.icao));
-                let current_aicraft_len = current_aircraft.len();
-                current_aircraft[current_aicraft_len-1].handle_packet(msg.clone());
-            }
-        }
-        print!("\x1B[2J\x1B[1;1H");
-        println!("  icao  | Callsign   | Altitude | Age |");
-        println!("----------------------------------------");
-        for plane in current_aircraft.iter() {
-            println!(
-                " {:06x} | {:<10} |  {:06}  | {:02}s |",
-                plane.get_icao(),
-                plane.get_callsign(),
-                plane.get_altitude_ft(),
-                plane.get_age()
-            );
-        }
-
-        current_aircraft.retain(|a| a.get_age() <= 30);
-
-        thread::sleep(Duration::from_secs(1));
-    }
 }
 
 

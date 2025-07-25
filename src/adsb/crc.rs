@@ -46,7 +46,7 @@ pub fn get_adsb_crc(buf: &Vec<u8>) -> u32 {
 /// `calc_crc` - the calculated crc
 /// `packet_crc` - the crc from the packet
 /// return a augmented buffer if succesful
-pub fn try_crc_recovery(buf: Vec<u8>, calc_crc: u32, packet_crc: u32) -> Option<Vec<u8>> {
+pub fn try_crc_recovery(buf: Vec<u8>, _calc_crc: u32, packet_crc: u32) -> Option<Vec<u8>> {
     for (num, byte) in buf.iter().enumerate() {
         let mut augmented_buf = buf.clone();
         for i in 0..8 {
