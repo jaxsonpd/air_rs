@@ -64,10 +64,10 @@ impl std::fmt::Display for AdsbPacket {
             .collect::<Vec<_>>()
             .join("");
 
-        writeln!(f, "{}", packet_hex)?;
+        writeln!(f, "== {} ==", packet_hex)?;
 
         // Add the decoded metadata
-        writeln!(f, "\nDecoded Information:")?;
+        writeln!(f, "Decoded Information:")?;
         writeln!(f, "Downlink Format : {}", self.downlink_format)?;
         writeln!(f, "Capability      : {}", self.capability)?;
         writeln!(f, "ICAO            : {:06X}", self.icao)?;

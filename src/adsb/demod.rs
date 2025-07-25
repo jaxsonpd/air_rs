@@ -2,6 +2,12 @@
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
 
+use plotters::data::float;
+use chrono::Local;
+use std::fs::File;
+use plotters::prelude::*;
+
+const HIGH_THRESHOLD_DERATE: f64 = 0.9;
 
 /// Check that a packet is a vaild adsb frame and is worth decoding
 /// 
@@ -57,34 +63,82 @@ pub fn check_for_adsb_packet(buf: [u32; 32]) -> Option<(u32, i32, i32)> {
 /// 
 /// returns byte vector if packet is correct and worth looking at
 pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
-    let extracted_manchester = extract_manchester(buf.to_vec(), (high as f64 * 0.90) as u32)?;
-    println!("Manchester extracted for {:?}", extracted_manchester);
+    let extracted_manchester = extract_manchester_relative(buf.to_vec(), (high as f64 * HIGH_THRESHOLD_DERATE) as u32)?;
 
-    let packet = decode_packet(extracted_manchester)?;
-    println!("Manchester packet extracted for {:?}", packet);
+    let packet = decode_packet(extracted_manchester.clone())?;
 
     let len = packet.len();
     let calced_crc = get_adsb_crc(&packet[0..len-3].to_vec());
-    let packet_crc = ((packet[len-1] as u32) << 16) | 
-                            ((packet[len-2] as u32) << 16) |
+    let packet_crc = ((packet[len-1] as u32) << 0) | 
+                            ((packet[len-2] as u32) << 8) |
                             ((packet[len-3] as u32) << 16);
     
     if calced_crc != packet_crc {
-        println!("Bad crc found for {:?}", packet);
-        return None;
+        // println!("Bad crc found for {:?}, expected: {}, calc: {}", packet, packet_crc, calced_crc);
+        return None
     }
 
     Some(packet)
 }
 
 /// Extract the manchester values of a packet
+/// Processed: 149, Good: 35
+/// 
+/// `buf` - the data buffer
+/// 
+/// `high` - the high level threshold (unused)
+/// 
+/// returns a buffer of the manchester encoding (each u16 = 8 bits in 16 edges)
+fn extract_manchester_relative(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
+    let mut result = Vec::with_capacity(14);
+    let mut errors = 0;
+
+    let buf_len = buf.len();
+    for block_start in (0..buf_len).step_by(16) {
+        let mut symbol: u16 = 0;
+
+        for bit in 0..8 {
+            let i = block_start + bit * 2;
+
+            let first;
+            let second;
+
+            if buf[i] > buf[i+1] {
+                first = 1;
+                second = 0;
+            } else {
+                first = 0;
+                second = 1;
+            }
+
+            if first != second {
+                symbol |= (first as u16) << (14 - bit*2);
+                symbol |= (second as u16) << (15 - bit*2);
+            } else {
+                errors += 1;
+                if errors > 2 {
+                    return None;
+                }
+                // return None;
+            }
+        }
+
+        result.push(symbol);
+        errors = 0;
+    }
+
+    Some(result)
+}
+
+/// Extract the manchester values of a packet
+/// Processed: 149, Good: 8
 /// 
 /// `buf` - the data buffer
 /// 
 /// `high` - the high level threshold
 /// 
 /// returns a buffer of the manchester encoding (each u16 = 8 bits in 16 edges)
-fn extract_manchester(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
+fn extract_manchester_threshold(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
     let mut result = Vec::with_capacity(14);
     let mut errors = 0;
 
@@ -106,6 +160,7 @@ fn extract_manchester(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
                 if errors > 2 {
                     return None;
                 }
+                // return None;
             }
         }
 
@@ -181,6 +236,48 @@ fn get_adsb_crc(buf: &Vec<u8>) -> u32 {
     remainder
 }
 
+/// Plot an ADS-B packet
+/// 
+/// - `mag_buf`: the raw magnitude vector
+/// - `manchester`: the modified manchester vector
+/// - `decoded`: the decoded raw hex values
+pub fn plot_adsb_packet(mag_buf: Vec<u32>, manchester: Vec<u16>, decoded: Vec<u8>) {
+    // Generate timestamp-based filename
+    let timestamp = Local::now().format("adsb_packet_%Y%m%d_%H%M%S.svg").to_string();
+    let root = SVGBackend::new(&timestamp, (1000, 400)).into_drawing_area();
+
+    root.fill(&WHITE).unwrap();
+
+    let max_mag = *mag_buf.iter().max().unwrap_or(&1) as f64;
+
+    // Create chart
+    let mut chart = ChartBuilder::on(&root)
+        .caption("ADSB Packet", ("sans-serif", 20))
+        .margin(10)
+        .x_label_area_size(50)
+        .y_label_area_size(40)
+        .build_cartesian_2d(0..mag_buf.len(), 0f64..(max_mag * 1.1))
+        .unwrap();
+
+    chart.configure_mesh().disable_mesh().draw().unwrap();
+
+    // Plot raw magnitude as bars
+    chart.draw_series(
+        mag_buf
+            .iter()
+            .enumerate()
+            .map(|(x, y)| {
+                let y = *y as f64;
+                Rectangle::new(
+                    [(x, 0.0), (x + 1, y)],
+                    BLUE.mix(0.5).filled(),
+                )
+            })
+    ).unwrap();
+
+    println!("Plot saved to '{}'", timestamp);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -228,7 +325,7 @@ mod tests {
             buf[i + 3] = 120; // high
         }
 
-        let result = extract_manchester(buf, high);
+        let result = extract_manchester_threshold(buf, high);
         assert!(result.is_some());
         assert_eq!(result.unwrap().len(), 14);
     }
@@ -253,7 +350,7 @@ mod tests {
         buf[4] = 50;
         buf[5] = 50;
 
-        let result = extract_manchester(buf, high);
+        let result = extract_manchester_threshold(buf, high);
         assert!(result.is_none());
     }
 
