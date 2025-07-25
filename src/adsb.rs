@@ -13,6 +13,7 @@ mod tui;
 mod msgs;
 mod packet;
 mod demod;
+mod crc;
 
 use packet::AdsbPacket;
 use aircraft::Aircraft;
@@ -84,6 +85,8 @@ fn playback_thread(tx: Sender<Vec<Complex<i16>>>, filename: String) {
         thread::sleep(Duration::from_secs_f64(1e4/2e6));
         
     }
+
+    drop(tx);
 }
 
 /// Process incoming sdr data sending the result to the display queue
@@ -113,8 +116,10 @@ fn process_sdr_data_thread(rx: Receiver<Vec<Complex<i16>>>, tx: Sender<AdsbPacke
             }
         }
 
-        // println!("Processed: {}, Good: {}", num_processed, num_good);
+        
     }
+    println!("Processed: {}, Good: {}", num_processed, num_good);
+    drop(tx);
 }
 
 /// Display recivied packets in an interactive table format

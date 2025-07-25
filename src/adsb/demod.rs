@@ -2,10 +2,10 @@
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
 
-use plotters::data::float;
 use chrono::Local;
-use std::fs::File;
 use plotters::prelude::*;
+
+use crate::adsb::crc::{get_adsb_crc, try_crc_recovery};
 
 const HIGH_THRESHOLD_DERATE: f64 = 0.9;
 
@@ -74,8 +74,8 @@ pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
                             ((packet[len-3] as u32) << 16);
     
     if calced_crc != packet_crc {
-        // println!("Bad crc found for {:?}, expected: {}, calc: {}", packet, packet_crc, calced_crc);
-        return None
+        // println!("Trying to recover packet with crc: {:06X}, calculated: {:06X}", packet_crc, calced_crc);
+        return try_crc_recovery(packet, calced_crc, packet_crc);
     }
 
     Some(packet)
@@ -197,43 +197,6 @@ fn decode_packet(raw_buf: Vec<u16>) -> Option<Vec<u8>> {
     }
 
     Some(result)
-}
-
-/// Get the crc 
-/// 
-/// `buf` - the data buffer (no crc)
-/// 
-/// returns the crc calculated from the data
-fn get_adsb_crc(buf: &Vec<u8>) -> u32 {
-    const GENERATOR: u32 = 0b1_1111_1111_1111_0100_0000_1001;
-    const GENERATOR_LEN: usize = 24;
-
-    // convert buf into a vector of bits
-    let mut bits = Vec::with_capacity(buf.len() * 8 + GENERATOR_LEN);
-    for byte in buf {
-        for i in (0..8).rev() {
-            bits.push((byte >> i) & 1 != 0);
-        }
-    }
-
-    bits.extend(std::iter::repeat(false).take(GENERATOR_LEN));
-
-    for i in 0..(bits.len() - GENERATOR_LEN) {
-        if bits[i] {
-            for j in 0..=GENERATOR_LEN {
-                bits[i + j] ^= ((GENERATOR >> (GENERATOR_LEN - j)) & 1) != 0;
-            }
-        }
-    }
-
-    let mut remainder = 0u32;
-    for i in 0..GENERATOR_LEN {
-        if bits[bits.len() - GENERATOR_LEN + i] {
-            remainder |= 1 << (GENERATOR_LEN - 1 - i);
-        }
-    }
-
-    remainder
 }
 
 /// Plot an ADS-B packet
