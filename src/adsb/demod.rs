@@ -16,7 +16,7 @@ pub fn check_for_adsb_packet(buf: [u32; 32]) -> Option<(u32, i32, i32)> {
     // 0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15 
     let lows = [1, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15];
     let highs = [0, 2, 7, 9];
-    let mut min = 800000;
+    let mut min = u32::MAX;
 
     for high in highs.iter() {
         for low in lows.iter() {
