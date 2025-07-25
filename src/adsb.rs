@@ -98,7 +98,6 @@ fn process_sdr_data_thread(rx: Receiver<Vec<Complex<i16>>>, tx: Sender<AdsbPacke
             
             if let Some((high, _signal_power, _noise_power)) 
                     = demod::check_for_adsb_packet(check_mags) {
-                println!("{}", i);
                 if let Some(packet_buf) = demod::extract_packet(mags[i+16..i+112*2+16].to_vec(), high) {
                     let packet = AdsbPacket::new(packet_buf);
                     if tx.send(packet).is_err() {
