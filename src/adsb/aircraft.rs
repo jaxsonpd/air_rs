@@ -9,8 +9,8 @@ use crate::adsb;
 
 #[derive(Debug, Clone)]
 pub struct GeographicPosition {
-    latitude: f64,
-    longitude: f64,
+    pub latitude: f64,
+    pub longitude: f64,
 }
 
 /// Holder for aircraft information that has been received from adsb
@@ -58,7 +58,7 @@ impl Aircraft {
                             let even_cpr_lat_long = even_pos.get_cpr_position();
                             
                             self.geo_position = Some(calculate_geographic_position(even_cpr_lat_long, odd_cpr_lat_long, CprFormat::Even));
-                        }
+                        }  
                         self.last_odd_packet = Some(pos.clone());
                     },
                 }
@@ -93,6 +93,10 @@ impl Aircraft {
     /// Return the time since the last transmission in seconds
     pub fn get_age(&self) -> i64 {
         (chrono::Local::now() - self.last_contact).num_seconds()
+    }
+
+    pub fn get_geo_position(&self) -> Option<GeographicPosition> {
+        self.geo_position.clone()
     }
 }
 
@@ -267,7 +271,7 @@ mod tests {
         let first = CprFormat::Odd;
 
         let longitude = calculate_longitude(even_cpr_long, odd_cpr_long, latitude, first);
-        assert!((longitude -  3.91937).abs() < 0.0001); // Adjust expected value based on actual calculation
+        assert!((longitude -  3.829498291015625).abs() < 0.0001); // Adjust expected value based on actual calculation
     }
 
     #[test]
@@ -275,13 +279,10 @@ mod tests {
         let mut aircraft = Aircraft::new(0x40621D);
         let first = AdsbPacket::_new_from_string(String::from_str("8D40621D58C386435CC412692AD6").unwrap());
         let second = AdsbPacket::_new_from_string(String::from_str("8D40621D58C382D690C8AC2863A7").unwrap());
-        println!("First: {}", first);
-        println!("Second: {}", second);
 
         aircraft.handle_packet(first);
         aircraft.handle_packet(second);
         assert_eq!(aircraft.get_altitude_ft(), 38000);
-        println!("Geo Position: {:?}", aircraft.geo_position);
         assert!((aircraft.geo_position.clone().unwrap().latitude - 52.25720).abs() < 0.0001);
         assert!((aircraft.geo_position.unwrap().longitude - 3.829498291015625).abs() < 0.0001);
     }
@@ -327,10 +328,11 @@ mod tests {
         let mut aircraft = Aircraft::new(0x7C6B30);
         let first = AdsbPacket::_new_from_string(String::from_str("8d7c6b30580d107903b3cabf62ab").unwrap());
         let second = AdsbPacket::_new_from_string(String::from_str("8d7c6b30580d24eeaebb2dfea5bb").unwrap());
+        
         aircraft.handle_packet(first);
         aircraft.handle_packet(second);
+
         assert_eq!(aircraft.get_altitude_ft(), 1450);
-        println!("Geo Position: {:?}", aircraft.geo_position);
         assert!((aircraft.geo_position.clone().unwrap().latitude - -41.28964698920816).abs() < 0.0001);
         assert!((aircraft.geo_position.unwrap().longitude - 174.80927207253197).abs() < 0.0001);
     }

@@ -114,7 +114,7 @@ fn process_sdr_data_thread(rx: Receiver<Vec<Complex<i16>>>, tx: Sender<AdsbPacke
 
         
     }
-    println!("Processed: {}, Good: {}", num_processed, num_good);
+    // println!("Processed: {}, Good: {}", num_processed, num_good);
     drop(tx);
 }
 
