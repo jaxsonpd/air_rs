@@ -52,7 +52,6 @@ impl Aircraft {
                         self.last_even_packet = Some(pos.clone());
                         self.last_even_processed = msg.time_processed;
 
-
                         if let Some(odd_pos) = &self.last_odd_packet {
                             if (msg.time_processed - self.last_odd_processed).abs() > chrono::Duration::seconds(10) {
                                 return;
@@ -73,7 +72,7 @@ impl Aircraft {
                             if (msg.time_processed - self.last_even_processed).abs() > chrono::Duration::seconds(10) {
                                 return
                             }    
-                            
+
                             cpr_odd = pos.get_cpr_position();
                             cpr_even = even_pos.get_cpr_position();
                             first = CprFormat::Even;
