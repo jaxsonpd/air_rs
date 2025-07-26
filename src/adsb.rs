@@ -14,6 +14,7 @@ mod msgs;
 mod packet;
 mod demod;
 mod crc;
+mod cpr;
 
 use packet::AdsbPacket;
 
