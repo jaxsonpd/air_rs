@@ -5,7 +5,7 @@
 use chrono::{Local};
 
 use crate::adsb::msgs::{AdsbMsgType, CprFormat};
-use crate::adsb;
+use crate::adsb::{self, cpr};
 use crate::adsb::cpr::{calculate_geographic_position, GeographicPosition};
 
 
@@ -19,7 +19,9 @@ pub struct Aircraft {
     geo_position: Option<GeographicPosition>,
     last_contact: chrono::prelude::DateTime<Local>,
     last_odd_packet: Option<adsb::msgs::AircraftPosition>,
+    last_odd_processed: chrono::prelude::DateTime<Local>,
     last_even_packet: Option<adsb::msgs::AircraftPosition>,
+    last_even_processed: chrono::prelude::DateTime<Local>,
 }
 
 impl Aircraft {
@@ -27,7 +29,8 @@ impl Aircraft {
         Aircraft { icao: icao, callsign: None, 
         altitude: 0, geo_position: None,
         last_contact: Local::now(), 
-        last_odd_packet: None, last_even_packet: None } 
+        last_odd_packet: None, last_even_packet: None,
+        last_odd_processed: Local::now(), last_even_processed: Local::now() } 
         }
 
     pub fn handle_packet(&mut self, msg: adsb::AdsbPacket) {
@@ -39,26 +42,52 @@ impl Aircraft {
             AdsbMsgType::AircraftPosition(ref pos) => {
                 self.altitude = pos.get_altitude_ft();
                 self.last_contact = msg.time_processed;
+
+                let cpr_odd;
+                let cpr_even;
+                let first;
+                
                 match pos.get_cpr_format() {
                     adsb::msgs::CprFormat::Even => {
-                        if let Some(odd_pos) = &self.last_odd_packet {
-                            let odd_cpr_lat_long = odd_pos.get_cpr_position();
-                            let even_cpr_lat_long = pos.get_cpr_position();
-                            
-                            self.geo_position = Some(calculate_geographic_position(even_cpr_lat_long, odd_cpr_lat_long, CprFormat::Odd));
-                        }
                         self.last_even_packet = Some(pos.clone());
+                        self.last_even_processed = msg.time_processed;
+
+
+                        if let Some(odd_pos) = &self.last_odd_packet {
+                            if (msg.time_processed - self.last_odd_processed).abs() > chrono::Duration::seconds(10) {
+                                return;
+                            }
+
+                            cpr_odd = odd_pos.get_cpr_position();
+                            cpr_even = pos.get_cpr_position();
+                            first = CprFormat::Odd;
+                        } else {
+                            return;
+                        }
                     },
                     adsb::msgs::CprFormat::Odd => {
-                        if let Some(even_pos) = &self.last_even_packet {
-                            let odd_cpr_lat_long = pos.get_cpr_position();
-                            let even_cpr_lat_long = even_pos.get_cpr_position();
-                            
-                            self.geo_position = Some(calculate_geographic_position(even_cpr_lat_long, odd_cpr_lat_long, CprFormat::Even));
-                        }  
                         self.last_odd_packet = Some(pos.clone());
+                        self.last_odd_processed = msg.time_processed;
+
+                        if let Some(even_pos) = &self.last_even_packet {
+                            if (msg.time_processed - self.last_even_processed).abs() > chrono::Duration::seconds(10) {
+                                return
+                            }    
+                            
+                            cpr_odd = pos.get_cpr_position();
+                            cpr_even = even_pos.get_cpr_position();
+                            first = CprFormat::Even;
+                        }  else {
+                            return;
+                        }
                     },
                 }
+
+                if let Some(geo_position) = calculate_geographic_position(
+                                                                cpr_even,
+                                                                 cpr_odd, first) {
+                    self.geo_position = Some(geo_position);
+                };
                 
             }
             AdsbMsgType::AircraftID(id) => {

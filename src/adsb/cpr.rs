@@ -19,6 +19,13 @@ fn convert_cpr_to_float(cpr: u32) -> f64 {
     (cpr as f64) / CPR_TO_FLOAT
 }
 
+fn normalize_longitude(mut lon: f64) -> f64 {
+    while lon < -180.0 { lon += 360.0; }
+    while lon > 180.0 { lon -= 360.0; }
+    lon
+}
+
+
 /// Find the number of longitude zones for a given latitude
 /// 
 /// `lat` - the latitude in degrees
@@ -98,11 +105,8 @@ fn calculate_longitude(even_cpr_long: u32, odd_cpr_long: u32, latitude: f64, fir
     let m = (lon_cpr_e * (num_zones - 1.0) - lon_cpr_o * num_zones + 0.5).floor();
     let mut longitude = divisions * ((m % num_zones) + lon_cpr_o);
 
-    if longitude > 180.0 {
-        longitude -= 360.0;
-    }
-
-    longitude
+    longitude = normalize_longitude(longitude);
+    return longitude;
 }
 
 /// Calculate the geographic position from the even and odd CPR positions
@@ -116,7 +120,7 @@ pub fn calculate_geographic_position(even_cpr_lat_long: (u32, u32), odd_cpr_lat_
     let (latitude, even_latitude, odd_latitude) = calculate_latitude(even_cpr_lat_long.0, odd_cpr_lat_long.0, first);
     
     if calc_num_zones(even_latitude) != calc_num_zones(odd_latitude) {
-        panic!("Even and odd CPR latitudes are in different zones");
+        println!("Error: Number of zones for even and odd latitudes do not match");
         return None; 
     }
     
@@ -136,7 +140,7 @@ mod tests {
         let first = CprFormat::Odd;
 
         let latitude = calculate_latitude(even_cpr_lat, odd_cpr_lat, first);
-        assert!((latitude - 52.25720).abs() < 0.0001); // Adjust expected value based on actual calculation
+        assert!((latitude.0 - 52.25720).abs() < 0.0001); // Adjust expected value based on actual calculation
     }
 
     #[test]
