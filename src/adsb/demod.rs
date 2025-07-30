@@ -89,7 +89,7 @@ pub fn extract_packet(buf: Vec<u32>, high: u32) -> Option<Vec<u8>> {
 /// `high` - the high level threshold (unused)
 /// 
 /// returns a buffer of the manchester encoding (each u16 = 8 bits in 16 edges)
-fn extract_manchester_relative(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
+fn extract_manchester_relative(buf: Vec<u32>, _high: u32) -> Option<Vec<u16>> {
     let mut result = Vec::with_capacity(14);
     let mut errors = 0;
 
@@ -138,6 +138,7 @@ fn extract_manchester_relative(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
 /// `high` - the high level threshold
 /// 
 /// returns a buffer of the manchester encoding (each u16 = 8 bits in 16 edges)
+#[allow(dead_code)]
 fn extract_manchester_threshold(buf: Vec<u32>, high: u32) -> Option<Vec<u16>> {
     let mut result = Vec::with_capacity(14);
     let mut errors = 0;
@@ -204,7 +205,8 @@ fn decode_packet(raw_buf: Vec<u16>) -> Option<Vec<u8>> {
 /// - `mag_buf`: the raw magnitude vector
 /// - `manchester`: the modified manchester vector
 /// - `decoded`: the decoded raw hex values
-pub fn plot_adsb_packet(mag_buf: Vec<u32>, manchester: Vec<u16>, decoded: Vec<u8>) {
+#[allow(dead_code)]
+pub fn plot_adsb_packet(mag_buf: Vec<u32>, _manchester: Vec<u16>, _decoded: Vec<u8>) {
     // Generate timestamp-based filename
     let timestamp = Local::now().format("adsb_packet_%Y%m%d_%H%M%S.svg").to_string();
     let root = SVGBackend::new(&timestamp, (1000, 400)).into_drawing_area();
@@ -368,7 +370,7 @@ mod tests {
     fn test_extract_packet_bad_crc() {
         let mut buf = Vec::new();
         let high = 100;
-        for i in (0..224).step_by(2) {
+        for _i in (0..224).step_by(2) {
             buf.push(120);
             buf.push(50);
         }

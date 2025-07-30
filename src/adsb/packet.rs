@@ -4,7 +4,7 @@
 
 use chrono::Local;
 
-use crate::adsb::msgs::{AdsbMsg, AdsbMsgType, AircarftPosition, AircraftID, UknownMsg};
+use crate::adsb::msgs::{AdsbMsg, AdsbMsgType, AircraftPosition, AircraftID, UknownMsg};
 
 #[derive(Debug, Clone)]
 pub struct AdsbPacket {
@@ -31,8 +31,8 @@ impl AdsbPacket {
         let msg;
         if AircraftID::msg_id_match(msg_type) {
             msg = AdsbMsgType::AircraftID(AircraftID::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
-        } else if AircarftPosition::msg_id_match(msg_type) {
-            msg = AdsbMsgType::AircarftPosition(AircarftPosition::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
+        } else if AircraftPosition::msg_id_match(msg_type) {
+            msg = AdsbMsgType::AircraftPosition(AircraftPosition::new(packet[4..4+7].try_into().expect(format!("Bad aircraft id packet: {:?}", packet).as_str())));
         } else {
             msg = AdsbMsgType::Uknown(UknownMsg {raw_msg: packet[4..packet.len()].to_vec()});
         }
@@ -46,6 +46,25 @@ impl AdsbPacket {
             msg: msg,
             time_processed: Local::now()
         }
+    }
+
+    /// Create a new adsb packet from a string
+    /// 
+    /// packet - the packet in hex string format
+    /// 
+    /// returns a new AdsbPacket
+    pub fn _new_from_string(packet: String) -> Self {
+        let packet_bytes: Vec<u8> = packet
+            .chars()
+            .collect::<Vec<char>>()
+            .chunks(2)
+            .map(|chunk| {
+                u8::from_str_radix(&chunk.iter().collect::<String>(), 16)
+                    .expect("Invalid hex string in packet")
+            })
+            .collect();
+
+        AdsbPacket::new(packet_bytes)
     }
 
     
