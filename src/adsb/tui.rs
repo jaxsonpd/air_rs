@@ -20,13 +20,15 @@ struct App {
     /// Is the application running?
     running: bool,
     aircraft: Vec<Aircraft>,
+    num_packets: u32,
 }
 
 impl App {
     pub fn new() -> Self {
         App {
             running: false,
-            aircraft: Vec::new()
+            aircraft: Vec::new(),
+            num_packets: 0,
         }
     }
 
@@ -36,6 +38,7 @@ impl App {
 
         while self.running {
             while let Ok(packet) = rx.try_recv() {
+                self.num_packets += 1;
                 let mut handled = false;
                 for plane in self.aircraft.iter_mut() {
                     if plane.get_icao() == packet.get_icao() {
@@ -68,28 +71,36 @@ impl App {
             .split(frame.area());
 
 
-        let title = Line::from("air_rs adsb tracker")
+        let title = Line::from(format!("air_rs adsb tracker {}", self.num_packets))
             .bold()
             .light_magenta()
             .centered();
         
         let rows = self.aircraft.iter().map(|plane| {
-            Row::new(vec![Cell::from(format!("{:x}", plane.get_icao())), 
-                    Cell::from(format!("{}", plane.get_callsign())), 
-                    Cell::from(format!("{}", plane.get_altitude_ft())), 
-                    Cell::from("100m/s"), 
-                    Cell::from(format!("{}", plane.get_age()))])
+            let pos = plane.get_geo_position();
+            Row::new(vec![
+                Cell::from(format!("{:x}", plane.get_icao())),
+                Cell::from(format!("{}", plane.get_callsign())),
+                Cell::from(format!("{}", plane.get_altitude_ft())),
+                Cell::from(pos.clone().map_or_else(|| "n/a".to_string(), |p| format!("{:.6}", p.latitude))),
+                Cell::from(pos.map_or_else(|| "n/a".to_string(), |p| format!("{:.6}", p.longitude))),
+                Cell::from("n/a"),
+                Cell::from(format!("{}", plane.get_age())),
+            ])
         });
+
         let column_widths = [
             Constraint::Length(6),
             Constraint::Length(10),
             Constraint::Length(10),
             Constraint::Length(10),
             Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(5),
         ];
 
         let table = Table::new(rows, column_widths)
-            .header(Row::new(vec!["ICAO", "Callsign", "Altitude", "Velocity", "Age"]).bold())
+            .header(Row::new(vec!["ICAO", "Callsign", "Altitude", "Latitude", "Longitude", "Velocity", "Age"]).bold())
             .block(Block::bordered().title(title));
 
         frame.render_widget(table, layout[0]);
