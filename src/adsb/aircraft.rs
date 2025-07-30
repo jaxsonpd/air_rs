@@ -1,12 +1,10 @@
-use std::ops::Add;
-
 /// Module for holding aircraft information for use with displaying functionality
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
-use chrono::{Local, TimeZone};
-use clap::Id;
 
-use crate::adsb_msgs::AdsbMsgType;
+use chrono::{Local};
+
+use crate::adsb::msgs::AdsbMsgType;
 use crate::adsb;
 
 /// Holder for aircraft information that has been received from adsb
@@ -24,7 +22,8 @@ impl Aircraft {
     pub fn new(icao: u32) -> Self {
         Aircraft { icao: icao, callsign: "".to_string(), 
         altitude: 0, latitude: 0.0, longitude: 0.0, 
-        last_contact: Local.timestamp_opt(0, 0).single().expect("Time Stamp Creation didn't work") }
+        last_contact: Local::now() 
+    }
     }
 
     pub fn handle_packet(&mut self, msg: adsb::AdsbPacket) {
