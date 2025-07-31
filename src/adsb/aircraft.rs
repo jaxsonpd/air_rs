@@ -4,12 +4,23 @@
 
 use chrono::{DateTime, Local, Utc};
 use serde::Serialize;
-
+use ts_rs::TS;
 
 use crate::adsb::msgs::{AdsbMsgType, CprFormat};
 use crate::adsb::{self, cpr};
 use crate::adsb::cpr::{calculate_geographic_position, GeographicPosition};
 
+/// Summary of only aircraft information that is needed for displaying aircraft
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+#[serde(rename_all = "camelCase")]
+pub struct AircraftSummary {
+    icao: u32,
+    callsign: String,
+    altitude: i32,
+    geo_position: Option<GeographicPosition>,
+    last_contact: i64,
+}
 
 /// Holder for aircraft information that has been received from adsb
 #[derive(Debug, Clone)]
@@ -123,6 +134,18 @@ impl Aircraft {
 
     pub fn get_geo_position(&self) -> Option<GeographicPosition> {
         self.geo_position.clone()
+    }
+
+    /// Get a summary of the aircraft information
+    /// Returns an AircraftSummary struct
+    pub fn get_summary(&self) -> AircraftSummary {
+        AircraftSummary {
+            icao: self.icao,
+            callsign: self.get_callsign(),
+            altitude: self.get_altitude_ft(),
+            geo_position: self.get_geo_position(),
+            last_contact: self.last_contact.timestamp(),
+        }
     }
 }
 

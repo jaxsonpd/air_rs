@@ -3,10 +3,13 @@
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
 
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::adsb::msgs::CprFormat;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+#[serde(rename_all = "camelCase")]
 pub struct GeographicPosition {
     pub latitude: f64,
     pub longitude: f64,

@@ -19,6 +19,10 @@ axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 tower-http = { version = "0.6.6", features = ["fs"]}
+tokio-tungstenite = "0.20"
+tungstenite = "0.20"
+serde_json = "1.0"
+ts-rs = "7.0"
 
 [features]
 tui_test = []

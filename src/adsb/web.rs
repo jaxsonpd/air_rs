@@ -10,7 +10,7 @@ use serde::Serialize;
 use std::sync::mpsc::Receiver;
 
 use crate::adsb::packet::AdsbPacket;
-use crate::adsb::aircraft::{Aircraft, handle_aircraft_update};
+use crate::adsb::aircraft::{Aircraft, AircraftSummary, handle_aircraft_update};
 
 const WEB_DIR: &str = "adsb_frontend/dist";
 
@@ -70,9 +70,11 @@ pub fn web_interface_thread(rx: Receiver<AdsbPacket>) {
                 num_packets += 1;
                 let aircraft = handle_aircraft_update(packet, &mut aircrafts);
                 println!("Received packet for aircraft: {:?}", aircraft);
+                if let Some(aircraft) = aircraft {
+                    println!("Aircraft Summary: {:?}", aircraft.get_summary());
+                    println!("{:?}", Json(aircraft.get_summary()));
+                }
             }
         }
     });
-
-    
 }
