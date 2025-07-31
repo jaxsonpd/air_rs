@@ -11,7 +11,7 @@ use ratatui::{
 use std::{collections::{hash_map, HashMap}, error::Error, sync::mpsc::Receiver};
 use std::time::Duration;
 
-use crate::adsb::packet::AdsbPacket;
+use crate::adsb::{msgs::AircraftPosition, packet::AdsbPacket};
 use crate::adsb::aircraft::{Aircraft, handle_aircraft_update};
 
 /// The main application which holds the state and logic of the application.
@@ -64,7 +64,11 @@ impl App {
             .light_magenta()
             .centered();
         
-        let rows = self.aircrafts.clone().into_values().map(|plane| {
+        let binding = self.aircrafts.clone();
+        let mut sorted_aircrafts: Vec<&Aircraft> = binding.values().collect();
+        sorted_aircrafts.sort_by(|a, b| a.get_age().cmp(&b.get_age()));
+
+        let rows = sorted_aircrafts.iter().map(|plane| {
             let pos = plane.get_geo_position();
             Row::new(vec![
                 Cell::from(format!("{:x}", plane.get_icao())),
