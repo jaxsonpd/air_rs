@@ -141,13 +141,11 @@ function animate(timestamp: DOMHighResTimeStamp) {
     } else {
         const bounds = aircraft.reduce((acc, plane) => {
             if (plane.pos) {
-                acc.mindist = Math.min(acc.mindist, plane.pos.get_distance(center.pos));
                 acc.maxdist = Math.max(acc.maxdist, plane.pos.get_distance(center.pos));
             }
             return acc;
         }, {
-            mindist: Infinity,
-            maxdist: -Infinity,
+            maxdist: 60000,
         });
 
         center.scale_p_p_m = canvas.width / (bounds.maxdist*2);
