@@ -11,7 +11,7 @@ use crate::adsb::cpr::{calculate_geographic_position, GeographicPosition};
 
 
 /// Holder for aircraft information that has been received from adsb
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Aircraft {
     icao: u32,
     callsign: Option<String>,
@@ -125,7 +125,20 @@ impl Aircraft {
     }
 }
 
-
+/// Handle recieving aircraft packets and updating the aircraft information.
+/// Adding an aircraft to the hashmap if it does not exist or updating it if it does.
+/// 
+/// 'packet' - the ADS-B packet to handle
+/// 'aircrafts' - a hashmap of aircrafts to update
+/// returns the aircraft that was updated or added
+pub fn handle_aircraft_update(packet: adsb::AdsbPacket, aircrafts: &mut std::collections::HashMap<u32, Aircraft>) -> Option<Aircraft> {
+    let icao = packet.get_icao();
+    let aircraft = aircrafts.entry(icao).or_insert(Aircraft::new(icao));
+    
+    aircraft.handle_packet(packet);
+    
+    Some(aircraft.clone())
+}
 
 mod tests {
     #[allow(unused_imports)]

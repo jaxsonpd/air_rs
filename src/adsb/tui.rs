@@ -8,18 +8,18 @@ use ratatui::{
     style::{Stylize}, text::Line, widgets::{Block, Cell, Row, Table}, DefaultTerminal, Frame
 };
 
-use std::{error::Error, sync::mpsc::Receiver};
+use std::{collections::{hash_map, HashMap}, error::Error, sync::mpsc::Receiver};
 use std::time::Duration;
 
 use crate::adsb::packet::AdsbPacket;
-use crate::adsb::aircraft::Aircraft;
+use crate::adsb::aircraft::{Aircraft, handle_aircraft_update};
 
 /// The main application which holds the state and logic of the application.
 #[derive(Debug, Default)]
 struct App {
     /// Is the application running?
     running: bool,
-    aircraft: Vec<Aircraft>,
+    aircrafts: hash_map::HashMap<u32, Aircraft>,
     num_packets: u32,
 }
 
@@ -27,7 +27,7 @@ impl App {
     pub fn new() -> Self {
         App {
             running: false,
-            aircraft: Vec::new(),
+            aircrafts: HashMap::new(),
             num_packets: 0,
         }
     }
@@ -39,19 +39,7 @@ impl App {
         while self.running {
             while let Ok(packet) = rx.try_recv() {
                 self.num_packets += 1;
-                let mut handled = false;
-                for plane in self.aircraft.iter_mut() {
-                    if plane.get_icao() == packet.get_icao() {
-                        plane.handle_packet(packet.clone());
-                        handled = true;
-                        break;
-                    }
-                }
-                if !handled {
-                    self.aircraft.push(Aircraft::new(packet.icao));
-                    let len = self.aircraft.len();
-                    self.aircraft[len-1].handle_packet(packet.clone());
-                }
+                handle_aircraft_update(packet, &mut self.aircrafts);
             }
             terminal.draw(|frame| self.render(frame))?;
             self.handle_crossterm_events()?;
@@ -76,7 +64,7 @@ impl App {
             .light_magenta()
             .centered();
         
-        let rows = self.aircraft.iter().map(|plane| {
+        let rows = self.aircrafts.clone().into_values().map(|plane| {
             let pos = plane.get_geo_position();
             Row::new(vec![
                 Cell::from(format!("{:x}", plane.get_icao())),
