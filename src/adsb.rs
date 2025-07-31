@@ -15,12 +15,14 @@ mod packet;
 mod demod;
 mod crc;
 mod cpr;
+mod web;
 
 use packet::AdsbPacket;
 
 use crate::cli::DisplayMode;
 use crate::sdr::get_sdr_args;
 use crate::utils::{get_magnitude, load_data};
+use crate::adsb::web::web_interface_thread;
 
 const SDR_GAIN: f64 = 49.50;
 const SDR_CHANNEL: usize = 0;
@@ -140,6 +142,7 @@ pub fn launch_adsb(device: Option<u32>, mode: DisplayMode, playback: Option<Stri
         let dev = setup_sdr(device);
         _stream_thread = thread::spawn(move || {get_sdr_data_thread(dev, tx_raw_sdr);});
     }
+
     let (tx_adsb_msgs, rx_adsb_msgs):(Sender<AdsbPacket>, Receiver<AdsbPacket>) = mpsc::channel();
     let _process_thread = thread::spawn(move || {process_sdr_data_thread(rx_raw_sdr, tx_adsb_msgs);});
 
@@ -157,7 +160,7 @@ pub fn launch_adsb(device: Option<u32>, mode: DisplayMode, playback: Option<Stri
         }
         DisplayMode::Web => {
             display_thread = thread::spawn(move || {
-                println!("Web Display not implemented yet please restart");
+                web_interface_thread(rx_adsb_msgs);
             });
             
         }

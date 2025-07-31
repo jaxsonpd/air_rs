@@ -1,4 +1,4 @@
-/// Module for cacluating position from CPR (Compressed Position Reporting) data.
+/// Module for calculating position from CPR (Compressed Position Reporting) data.
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
 
