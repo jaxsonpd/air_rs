@@ -1,6 +1,7 @@
 import { Aircraft } from "./aircraft";
 import { Center, Position, PostionXY } from "./position";
 import { create_demo_aircraft, update_aircraft_demo, create_demo_center } from "./demo";
+import { AircraftSummary } from "../../bindings/AircraftSummary";
 
 const pos_canvas = document.getElementById("display") as HTMLCanvasElement | null;
 
@@ -8,9 +9,7 @@ if (!pos_canvas) {
     throw new Error("Canvas element not found");
 }
 
-const canvas: HTMLCanvasElement = pos_canvas
-
-
+const canvas: HTMLCanvasElement = pos_canvas;
 
 let ctx: CanvasRenderingContext2D;
 
@@ -32,7 +31,6 @@ function resizeCanvas() {
 
 resizeCanvas();
 
-
 let mouse_x: number = 0;
 let mouse_y: number = 0;
 
@@ -52,7 +50,8 @@ canvas.addEventListener('click', e => {
     }
 });
 
-const demo = true;
+const demo = false;
+const socket = new WebSocket("ws://localhost:8080/ws");
 let aircraft: Aircraft[] = [];
 
 let center: Center = new Center(new Position(33.9425, 33.9425), new PostionXY(400, 400), 1);
@@ -104,13 +103,55 @@ function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
 
 }
 
+/// Handle new aircraft data received from the WebSocket
+function handle_new_aircraft(aircraftData: any) {
+    const exsitingAircraft = aircraft.find(ac => ac.icao === aircraftData.icao);
+
+    let geoPosition = center.pos;
+    if (aircraftData.geoPosition) {
+        geoPosition = new Position(aircraftData.geoPosition.latitude, aircraftData.geoPosition.longitude);
+    }
+
+    if (exsitingAircraft) {
+        // Update existing aircraft
+        exsitingAircraft.callsign = aircraftData.callsign;
+        exsitingAircraft.altitude = aircraftData.altitude;
+        exsitingAircraft.pos = geoPosition;
+        exsitingAircraft.last_contact = Date.now();
+    } else {
+        // Create new aircraft
+        const newAircraft = new Aircraft(
+            aircraftData.icao,
+            aircraftData.callsign,
+            aircraftData.altitude,
+            geoPosition
+        );
+        aircraft.push(newAircraft);
+    }
+}
+
 let lastUpdate = performance.now();
 const UPDATE_RATE = 1000;
 
 function animate(timestamp: DOMHighResTimeStamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    center.scale_p_p_m = canvas.width / 60000;
+    if (aircraft.length === 0) {
+        center.scale_p_p_m = canvas.width / 60000;
+    } else {
+        const bounds = aircraft.reduce((acc, plane) => {
+            if (plane.pos) {
+                acc.mindist = Math.min(acc.mindist, plane.pos.get_distance(center.pos));
+                acc.maxdist = Math.max(acc.maxdist, plane.pos.get_distance(center.pos));
+            }
+            return acc;
+        }, {
+            mindist: Infinity,
+            maxdist: -Infinity,
+        });
+
+        center.scale_p_p_m = canvas.width / (bounds.maxdist*2);
+    }
     ctx.beginPath();
     ctx.moveTo(25, canvas.height - 25);
     ctx.lineTo(25 + center.scale_p_p_m * 1000, canvas.height - 25);
@@ -128,9 +169,18 @@ function animate(timestamp: DOMHighResTimeStamp) {
         }
     });
 
-    if (demo && (timestamp - lastUpdate) >= UPDATE_RATE) {
-        update_aircraft_demo(aircraft);
-        lastUpdate = timestamp;
+    if ((timestamp - lastUpdate) >= UPDATE_RATE) {
+        if (demo) {
+            update_aircraft_demo(aircraft);
+            lastUpdate = timestamp;
+        } else {
+            socket.onmessage = (event) => {
+            const aircraft = JSON.parse(event.data, );
+            console.log("Aircraft:", aircraft);
+            handle_new_aircraft(aircraft);
+        };
+
+        }
     }
 
     requestAnimationFrame(animate);
