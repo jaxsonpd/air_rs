@@ -2,9 +2,11 @@
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
 
+use serde::Serialize;
+
 use crate::adsb::msgs::CprFormat;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GeographicPosition {
     pub latitude: f64,
     pub longitude: f64,

@@ -4,12 +4,13 @@
 
 use axum::{routing::{get, get_service}, Json, Router};
 use tower_http::services::ServeDir;
-use std::net::SocketAddr;
+use std::{collections::HashMap, hash::Hash, net::SocketAddr};
 use serde::Serialize;
 
 use std::sync::mpsc::Receiver;
 
 use crate::adsb::packet::AdsbPacket;
+use crate::adsb::aircraft::{Aircraft, handle_aircraft_update};
 
 const WEB_DIR: &str = "adsb_frontend/dist";
 
@@ -55,19 +56,23 @@ pub fn web_interface_thread(rx: Receiver<AdsbPacket>) {
     let rt = tokio::runtime::Runtime::new().unwrap();
 
     // Block on the async server run
-    rt.block_on(run_server());
-    
-    loop {
-        match rx.recv() {
-            Ok(packet) => {
-                // Process the packet and update the web interface
-                // This could involve sending data to a WebSocket or updating a shared state
-                println!("Received packet: {:?}", packet);
-            },
-            Err(e) => {
-                eprintln!("Error receiving packet: {}", e);
-                break;
+    rt.block_on(async {
+        // Spawn the web server in the background
+        tokio::spawn(async {
+            run_server().await;
+        });
+
+        let mut num_packets = 0;
+        let mut aircrafts: HashMap<u32, Aircraft> = HashMap::new();
+        
+        loop {
+            while let Ok(packet) = rx.try_recv() {
+                num_packets += 1;
+                let aircraft = handle_aircraft_update(packet, &mut aircrafts);
+                println!("Received packet for aircraft: {:?}", aircraft);
             }
         }
-    }
+    });
+
+    
 }
