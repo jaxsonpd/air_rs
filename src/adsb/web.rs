@@ -2,9 +2,10 @@
 /// 
 /// Author: Jack Duignan (JackpDuignan@gmail.com)
 
-use std::fs;
-use std::path::Path;
-use tiny_http::{Server, Response};
+use axum::{routing::{get, get_service}, Json, Router};
+use tower_http::services::ServeDir;
+use std::net::SocketAddr;
+use serde::Serialize;
 
 use std::sync::mpsc::Receiver;
 
@@ -12,42 +13,50 @@ use crate::adsb::packet::AdsbPacket;
 
 const WEB_DIR: &str = "adsb_frontend/dist";
 
-/// Start the web interface
-/// 
-fn start_web_server() {
-     let server = Server::http("0.0.0.0:8080").unwrap();
+#[derive(Serialize)]
+struct MyData {
+    id: u32,
+    message: String,
+}
 
-    println!("Server started at http://localhost:8080");
+async fn get_data() -> Json<MyData> {
+    Json(MyData {
+        id: 123,
+        message: "Hello from Rust backend!".to_string(),
+    })
+}
 
-    for request in server.incoming_requests() {
-        let url = request.url();
-        let path = if url == "/" {
-            "adsb_frontend/dist/index.html"
-        } else {
-            &format!("adsb_frontend/dist{}", url)
-        };
+// Build the axum router
+fn build_app() -> Router {
+    let static_files_service = get_service(ServeDir::new(WEB_DIR));
 
-        let path = Path::new(path);
+    Router::new()
+        .route("/api/data", get(get_data))
+        .nest_service("/", static_files_service)
+}
 
-        let response = if path.exists() && path.is_file() {
-            let content = fs::read(path).unwrap();
-            let mime_type = mime_guess::from_path(path).first_or_octet_stream();
-            Response::from_data(content).with_header(
-                tiny_http::Header::from_bytes(&b"Content-Type"[..], mime_type.essence_str()).unwrap()
-            )
-        } else {
-            Response::from_string("404 Not Found").with_status_code(404)
-        };
+// Run the server (async)
+async fn run_server() {
+    let app = build_app();
 
-        let _ = request.respond(response);
-    }
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    println!("Listening on http://{}", addr);
+
+    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app.into_make_service())
+        .await
+        .unwrap();
 }
 
 /// Handle the web interface for the ADS-B system.
 /// 
 /// `rx` - the receiver for ADS-B packets
 pub fn web_interface_thread(rx: Receiver<AdsbPacket>) {
-    start_web_server();
+    // Create the Tokio runtime
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    // Block on the async server run
+    rt.block_on(run_server());
+    
     loop {
         match rx.recv() {
             Ok(packet) => {

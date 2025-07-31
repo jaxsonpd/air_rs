@@ -15,9 +15,10 @@ byteorder = "1.5.0"
 crossterm = "0.28.1"
 ratatui = "0.29.0"
 color-eyre = "0.6.3"
-tiny_http = "0.12"
-mime_guess = "2"
-
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+tower-http = { version = "0.6.6", features = ["fs"]}
 
 [features]
 tui_test = []
