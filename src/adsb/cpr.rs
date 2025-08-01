@@ -93,23 +93,34 @@ fn calculate_longitude(even_cpr_long: u32, odd_cpr_long: u32, latitude: f64, fir
 
     let num_zones: f64;
 
+    let nl = calc_num_zones(latitude); 
+
     match first {
         CprFormat::Even => {
             // Later is odd
-            num_zones = (calc_num_zones(latitude)-1).max(1) as f64
+            num_zones = (calc_num_zones(latitude-1.0)).max(1) as f64
         },
         CprFormat::Odd => {
             // Later is even
             num_zones = (calc_num_zones(latitude)).max(1) as f64
         },
-        
     }
 
     
     let divisions = 360.0 / num_zones;
-    let m = (lon_cpr_e * (num_zones - 1.0) - lon_cpr_o * num_zones + 0.5).floor();
-    let mut longitude = divisions * ((m % num_zones) + lon_cpr_o);
+    let m = (lon_cpr_e * (nl - 1) as f64 - lon_cpr_o * (nl as f64) + 0.5).floor();
 
+    let mut longitude: f64;
+
+    match first {
+        CprFormat::Even => {
+            longitude = divisions * ((m % num_zones) + lon_cpr_o);
+        },
+        CprFormat::Odd => {
+            longitude = divisions * ((m % num_zones) + lon_cpr_e);
+        },
+    }
+     
     longitude = normalize_longitude(longitude);
     return longitude;
 }
@@ -173,4 +184,22 @@ mod tests {
         let longitude = calculate_longitude(even_cpr_long, odd_cpr_long, latitude, first);
         assert!((longitude -  3.829498291015625).abs() < 0.0001); // Adjust expected value based on actual calculation
     }
+
+    #[test]
+    fn test_identify_issue_with_latitude() {
+        let even_cpr_lat = 23868; // Example even CPR latitude
+        let odd_cpr_lat = 38688; // Example odd CPR latitude
+        let first = CprFormat::Odd;
+
+        let (latitude, even_latitude, odd_latitude) = calculate_latitude(even_cpr_lat, odd_cpr_lat, first);
+        println!("Even Latitude: {}, Odd Latitude: {}, Calculated Latitude: {}", even_latitude, odd_latitude, latitude);
+
+        assert_eq!(calc_num_zones(even_latitude), calc_num_zones(odd_latitude));
+
+        let even_cpr_long = 111509; // Example even CPR longitude
+        let odd_cpr_long = 47864; // Example odd CPR longitude
+        let longitude = calculate_longitude(even_cpr_long, odd_cpr_long, latitude, CprFormat::Odd);
+        
+        println!("Longitude: {}", longitude);
+        }
 }
