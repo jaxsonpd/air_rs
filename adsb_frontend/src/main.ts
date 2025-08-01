@@ -54,7 +54,7 @@ const demo = false;
 const socket = new WebSocket("ws://localhost:8080/ws");
 let aircraft: Aircraft[] = [];
 
-let center: Center = new Center(new Position(33.9425, 33.9425), new PostionXY(400, 400), 1);
+let center: Center = new Center(new Position(-41.296466, 174.785409), new PostionXY(400, 400), 60000);
 
 if (demo) {
     aircraft = create_demo_aircraft();
