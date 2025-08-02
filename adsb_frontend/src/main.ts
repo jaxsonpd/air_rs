@@ -106,6 +106,7 @@ class AircraftDisplayApp {
 
         this.initEventListeners();
         this.resizeCanvas();
+        this.center.recenter(this.canvas.width, this.canvas.height);
         requestAnimationFrame(this.animate.bind(this));
     }
 
