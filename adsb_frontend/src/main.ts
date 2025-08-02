@@ -12,6 +12,12 @@ const CONFIG = {
     FONT: 'bold 12.5px Courier New',
 };
 
+/**
+ * Draw a statistics window in the top left corner of the screeen
+ * 
+ * @param ctx the canvas element to draw on
+ * @param aircraft the aircraft to pull data from
+ */
 function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
     const num_planes = aircraft.length;
     const max_alt = Math.max(...aircraft.map(plane => plane.altitude));
@@ -43,6 +49,13 @@ function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
     }
 }
 
+/**
+ * Handle in coming aircraft data.
+ * 
+ * @param aircraftData the incoming aircraft data
+ * @param aircraft the current aircraft available
+ * @param center the center point of the screen for placement
+ */
 function handle_new_aircraft(aircraftData: any, aircraft: Aircraft[], center: Center) {
     const existingAircraft = aircraft.find(ac => ac.icao === aircraftData.icao);
 
