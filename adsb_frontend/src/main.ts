@@ -3,64 +3,14 @@ import { Center, Position, PostionXY } from "./position";
 import { create_demo_aircraft, update_aircraft_demo, create_demo_center } from "./demo";
 import { AircraftSummary } from "../../bindings/AircraftSummary";
 
-const pos_canvas = document.getElementById("display") as HTMLCanvasElement | null;
-
-if (!pos_canvas) {
-    throw new Error("Canvas element not found");
-}
-
-const canvas: HTMLCanvasElement = pos_canvas;
-
-let ctx: CanvasRenderingContext2D;
-
-const context = canvas.getContext("2d");
-
-if (!context) {
-    throw new Error("Could not get 2D context");
-}
-
-ctx = context;
-
-ctx.font = 'bold 12.5px Courier New'
-
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    ctx.font = 'bold 12.5px Courier New'
-}
-
-resizeCanvas();
-
-let mouse_x: number = 0;
-let mouse_y: number = 0;
-
-canvas.addEventListener('mousemove', e => {
-    mouse_x = e.clientX;
-    mouse_y = e.clientY;
-});
-
-canvas.addEventListener('click', e => {
-    const mx = e.clientX;
-    const my = e.clientY;
-    for (const ac of aircraft) {
-        if (ac.check_hover(mx, my)) {
-            ac.toggle_expanded();
-            return;
-        }
-    }
-});
-
-const demo = false;
-const socket = new WebSocket("ws://localhost:8080/ws");
-let aircraft: Aircraft[] = [];
-
-let center: Center = new Center(new Position(-41.296466, 174.785409), new PostionXY(400, 400), 60000);
-
-if (demo) {
-    aircraft = create_demo_aircraft();
-    center = create_demo_center();
-    center.recenter(canvas.width, canvas.height);
-}
+const CONFIG = {
+    UPDATE_RATE: 1000,
+    DEMO_MODE: true,
+    DEFAULT_CENTER_POS: new Position(-41.296466, 174.785409),
+    DEFAULT_CENTER_PPM: 60000,
+    DEFAULT_CENTER_XY: new PostionXY(400, 400),
+    FONT: 'bold 12.5px Courier New',
+};
 
 function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
     const num_planes = aircraft.length;
@@ -72,54 +22,44 @@ function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
         `# Aircraft: ${num_planes}`,
         `Max Altitude: ${max_alt}`,
         `Min Altitude: ${min_alt}`
-    ]
+    ];
 
-    let box_x = 10;
-    let box_y = 10;
-    let padding = 10;
-    let text_width = 0;
-        
-    lines.forEach(line => {
-        const length = ctx.measureText(line).width;
-        if (length > text_width) {
-            text_width = length
-        }
-    });
-
+    const padding = 10;
+    let text_width = Math.max(...lines.map(line => ctx.measureText(line).width));
     const width = text_width + padding * 2;
     const height = padding + 15 * lines.length;
+
+    const box_x = 10;
+    const box_y = 10;
 
     ctx.fillStyle = 'black';
     ctx.fillRect(box_x, box_y, width, height);
     ctx.strokeStyle = 'white';
     ctx.strokeRect(box_x, box_y, width, height);
-
     ctx.fillStyle = 'white';
 
     for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], box_x + padding, box_y + (12.5 * (i+1)));
-        
+        ctx.fillText(lines[i], box_x + padding, box_y + (12.5 * (i + 1)));
     }
-
 }
 
-/// Handle new aircraft data received from the WebSocket
-function handle_new_aircraft(aircraftData: any) {
-    const exsitingAircraft = aircraft.find(ac => ac.icao === aircraftData.icao);
+function handle_new_aircraft(aircraftData: any, aircraft: Aircraft[], center: Center) {
+    const existingAircraft = aircraft.find(ac => ac.icao === aircraftData.icao);
 
     let geoPosition = center.pos;
     if (aircraftData.geoPosition) {
-        geoPosition = new Position(aircraftData.geoPosition.latitude, aircraftData.geoPosition.longitude);
+        geoPosition = new Position(
+            aircraftData.geoPosition.latitude,
+            aircraftData.geoPosition.longitude
+        );
     }
 
-    if (exsitingAircraft) {
-        // Update existing aircraft
-        exsitingAircraft.callsign = aircraftData.callsign;
-        exsitingAircraft.altitude = aircraftData.altitude;
-        exsitingAircraft.pos = geoPosition;
-        exsitingAircraft.last_contact = Date.now();
+    if (existingAircraft) {
+        existingAircraft.callsign = aircraftData.callsign;
+        existingAircraft.altitude = aircraftData.altitude;
+        existingAircraft.pos = geoPosition;
+        existingAircraft.last_contact = Date.now();
     } else {
-        // Create new aircraft
         const newAircraft = new Aircraft(
             aircraftData.icao,
             aircraftData.callsign,
@@ -130,64 +70,121 @@ function handle_new_aircraft(aircraftData: any) {
     }
 }
 
-let lastUpdate = performance.now();
-const UPDATE_RATE = 1000;
+class AircraftDisplayApp {
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
+    private aircraft: Aircraft[] = [];
+    private center: Center;
+    private mouse = { x: 0, y: 0 };
+    private lastUpdate = performance.now();
+    private socket: WebSocket;
 
-function animate(timestamp: DOMHighResTimeStamp) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    if (aircraft.length === 0) {
-        center.scale_p_p_m = canvas.width / 60000;
-    } else {
-        const bounds = aircraft.reduce((acc, plane) => {
-            if (plane.pos) {
-                acc.maxdist = Math.max(acc.maxdist, plane.pos.get_distance(center.pos));
-            }
-            return acc;
-        }, {
-            maxdist: 60000,
+    constructor(canvasId: string) {
+        const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
+        if (!canvas) throw new Error("Canvas element not found");
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Could not get 2D context");
+
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.ctx.font = CONFIG.FONT;
+
+        this.center = new Center(
+            CONFIG.DEFAULT_CENTER_POS,
+            CONFIG.DEFAULT_CENTER_XY,
+            CONFIG.DEFAULT_CENTER_PPM
+        );
+
+        this.socket = new WebSocket("ws://localhost:8080/ws");
+
+        if (CONFIG.DEMO_MODE) {
+            this.aircraft = create_demo_aircraft();
+            this.center = create_demo_center();
+            this.center.recenter(this.canvas.width, this.canvas.height);
+        }
+
+        this.initEventListeners();
+        this.resizeCanvas();
+        requestAnimationFrame(this.animate.bind(this));
+    }
+
+    private initEventListeners() {
+        window.addEventListener("resize", () => {
+            this.resizeCanvas();
+            this.center.recenter(this.canvas.width, this.canvas.height);
         });
 
-        center.scale_p_p_m = canvas.width / (bounds.maxdist*2);
-    }
-    ctx.beginPath();
-    ctx.moveTo(25, canvas.height - 25);
-    ctx.lineTo(25 + center.scale_p_p_m * 1000, canvas.height - 25);
-    ctx.stroke();
+        this.canvas.addEventListener("mousemove", e => {
+            this.mouse.x = e.clientX;
+            this.mouse.y = e.clientY;
+        });
 
-    if (canvas.width > 200 && canvas.height > 200) {
-        draw_statistics(ctx, aircraft);
-    }
+        this.canvas.addEventListener("click", e => {
+            const mx = e.clientX;
+            const my = e.clientY;
+            for (const ac of this.aircraft) {
+                if (ac.check_hover(mx, my)) {
+                    ac.toggle_expanded();
+                    return;
+                }
+            }
+        });
 
-    aircraft.forEach(plane => {
-        plane.update_pos_xy(center);
-        plane.draw(ctx);
-        if (plane.check_hover(mouse_x, mouse_y)) {
-            plane.draw_expanded(ctx);
-        }
-    });
-
-    if ((timestamp - lastUpdate) >= UPDATE_RATE) {
-        if (demo) {
-            update_aircraft_demo(aircraft);
-            lastUpdate = timestamp;
-        } else {
-            socket.onmessage = (event) => {
-            const aircraft = JSON.parse(event.data, );
-            console.log("Aircraft:", aircraft);
-            handle_new_aircraft(aircraft);
+        this.socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            handle_new_aircraft(data, this.aircraft, this.center);
         };
-
-        }
     }
 
-    requestAnimationFrame(animate);
+    private resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.ctx.font = CONFIG.FONT;
+    }
+
+    private animate(timestamp: DOMHighResTimeStamp) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        if (this.aircraft.length === 0) {
+            this.center.scale_p_p_m = this.canvas.width / CONFIG.DEFAULT_CENTER_PPM;
+        } else {
+            const bounds = this.aircraft.reduce((acc, plane) => {
+                if (plane.pos) {
+                    acc.maxdist = Math.max(acc.maxdist, plane.pos.get_distance(this.center.pos));
+                }
+                return acc;
+            }, { maxdist: CONFIG.DEFAULT_CENTER_PPM });
+
+            this.center.scale_p_p_m = this.canvas.width / (bounds.maxdist * 2);
+        }
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(25, this.canvas.height - 25);
+        this.ctx.lineTo(25 + this.center.scale_p_p_m * 1000, this.canvas.height - 25);
+        this.ctx.stroke();
+
+        if (this.canvas.width > 200 && this.canvas.height > 200) {
+            draw_statistics(this.ctx, this.aircraft);
+        }
+
+        this.aircraft.forEach(plane => {
+            plane.update_pos_xy(this.center);
+            plane.draw(this.ctx);
+            if (plane.check_hover(this.mouse.x, this.mouse.y)) {
+                plane.draw_expanded(this.ctx);
+            }
+        });
+
+        if ((timestamp - this.lastUpdate) >= CONFIG.UPDATE_RATE) {
+            if (CONFIG.DEMO_MODE) {
+                update_aircraft_demo(this.aircraft);
+            }
+            this.lastUpdate = timestamp;
+        }
+
+        requestAnimationFrame(this.animate.bind(this));
+    }
 }
 
-window.addEventListener("resize", () => {
-    resizeCanvas();
-    center.recenter(canvas.width, canvas.height);
-});
-
-
-requestAnimationFrame(animate);
+new AircraftDisplayApp("display");
