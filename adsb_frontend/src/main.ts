@@ -1,15 +1,18 @@
 import { Aircraft } from "./aircraft";
 import { Center, Position, PostionXY } from "./position";
 import { create_demo_aircraft, update_aircraft_demo, create_demo_center } from "./demo";
+import { Airfield, loadAirfieldsFromCSV} from "./airfield/airfield"
 import { AircraftSummary } from "../../bindings/AircraftSummary";
+
 
 const CONFIG = {
     UPDATE_RATE: 1000,
-    DEMO_MODE: true,
+    DEMO_MODE: false,
     DEFAULT_CENTER_POS: new Position(-41.296466, 174.785409),
     DEFAULT_CENTER_PPM: 60000,
     DEFAULT_CENTER_XY: new PostionXY(400, 400),
     FONT: 'bold 12.5px Courier New',
+    AIRFIELDS_CSV_LOCATION: "/airfields.csv"
 };
 
 /**
@@ -87,10 +90,11 @@ class AircraftDisplayApp {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private aircraft: Aircraft[] = [];
+    private airfields: Airfield[] = [];
     private center: Center;
     private mouse = { x: 0, y: 0 };
     private lastUpdate = performance.now();
-    private socket: WebSocket;
+    private socket: WebSocket | null;
 
     constructor(canvasId: string) {
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
@@ -109,13 +113,21 @@ class AircraftDisplayApp {
             CONFIG.DEFAULT_CENTER_PPM
         );
 
-        this.socket = new WebSocket("ws://localhost:8080/ws");
+        if (!CONFIG.DEMO_MODE) {
+            this.socket = new WebSocket("ws://localhost:8080/ws");
+        } else {
+            this.socket = null;
+        }
 
         if (CONFIG.DEMO_MODE) {
             this.aircraft = create_demo_aircraft();
             this.center = create_demo_center();
             this.center.recenter(this.canvas.width, this.canvas.height);
         }
+
+        loadAirfieldsFromCSV(CONFIG.AIRFIELDS_CSV_LOCATION).then((loaded) => {
+            this.airfields = loaded;
+        })
 
         this.initEventListeners();
         this.resizeCanvas();
@@ -145,10 +157,12 @@ class AircraftDisplayApp {
             }
         });
 
-        this.socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            handle_new_aircraft(data, this.aircraft, this.center);
-        };
+        if (this.socket != null) {
+            this.socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handle_new_aircraft(data, this.aircraft, this.center);
+            };
+        }
     }
 
     private resizeCanvas() {
@@ -157,9 +171,7 @@ class AircraftDisplayApp {
         this.ctx.font = CONFIG.FONT;
     }
 
-    private animate(timestamp: DOMHighResTimeStamp) {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
+    private update_scale() {
         if (this.aircraft.length === 0) {
             this.center.scale_p_p_m = this.canvas.width / CONFIG.DEFAULT_CENTER_PPM;
         } else {
@@ -172,11 +184,20 @@ class AircraftDisplayApp {
 
             this.center.scale_p_p_m = this.canvas.width / (bounds.maxdist * 2);
         }
+    }
 
+    private draw_scale() {
         this.ctx.beginPath();
         this.ctx.moveTo(25, this.canvas.height - 25);
         this.ctx.lineTo(25 + this.center.scale_p_p_m * 1000, this.canvas.height - 25);
         this.ctx.stroke();
+    }
+
+    private animate(timestamp: DOMHighResTimeStamp) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.update_scale()
+        this.draw_scale()
 
         if (this.canvas.width > 200 && this.canvas.height > 200) {
             draw_statistics(this.ctx, this.aircraft);
@@ -196,6 +217,12 @@ class AircraftDisplayApp {
             }
             this.lastUpdate = timestamp;
         }
+
+        this.airfields.forEach(airfield => {
+            if (this.center.check_visible(airfield.position)) {
+                airfield.draw(this.ctx, this.center);
+            }
+        });
 
         requestAnimationFrame(this.animate.bind(this));
     }

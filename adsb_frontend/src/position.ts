@@ -82,6 +82,22 @@ export class Center {
         return new PostionXY(x, y);
     }
 
+    /**
+     * Check if an xy position is visible on the canvas
+     * @param xy the geographic position to check
+     * 
+     * @returns true if it is visible on the canvas
+     */
+    public check_visible(pos: Position): boolean {
+        const xy = this.get_xy(pos)
+        return (0 < xy.x) && (xy.x < this.pos_xy.x * 2) && (0 < xy.y) && (xy.y < this.pos_xy.y * 2)
+    }
+
+    /**
+     * Recentre the canvas given a new canvas size
+     * @param width the number of pixels in the x direction
+     * @param height the number of pixels in the y direction
+     */
     public recenter(width: number, height: number) {
         this.pos_xy.x = Math.floor(width / 2);
         this.pos_xy.y = Math.floor(height / 2);
