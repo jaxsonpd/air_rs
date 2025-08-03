@@ -182,7 +182,7 @@ class AircraftDisplayApp {
                 return acc;
             }, { maxdist: CONFIG.DEFAULT_CENTER_PPM });
 
-            this.center.scale_p_p_m = this.canvas.width / (bounds.maxdist * 2);
+            this.center.scale_p_p_m = this.canvas.width / (bounds.maxdist * 2.3);
         }
     }
 

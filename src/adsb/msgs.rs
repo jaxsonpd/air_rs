@@ -69,7 +69,7 @@ pub struct AircraftPosition {
 impl AircraftPosition {
     pub fn new(msg: [u8; 7]) -> Self {
         let alt_mode_25 = msg[1] & (1 << 0) == 1;
-        let mut altitude = (((msg[1] >> 1) as i32) << 4) | (((msg[2] & 0xF0) as i32) >> 4);
+        let mut altitude = ((((msg[1] & (0b1111_1110)) >> 1) as i32) << 4) | (((msg[2] & 0xF0) as i32) >> 4);
 
         altitude *= if alt_mode_25 { 25 } else { 100 };
         altitude -= 1000;

@@ -108,7 +108,7 @@ fn calculate_longitude(even_cpr_long: u32, odd_cpr_long: u32, latitude: f64, fir
 
     
     let divisions = 360.0 / num_zones;
-    let m = (lon_cpr_e * (nl - 1) as f64 - lon_cpr_o * (nl as f64) + 0.5).floor();
+    let m = (lon_cpr_e * ((nl - 1) as f64) - lon_cpr_o * (nl as f64) + 0.5).floor();
 
     let mut longitude: f64;
 
@@ -172,6 +172,8 @@ mod tests {
         assert_eq!(calc_num_zones(-90.0), 1);
 
         assert_eq!(calc_num_zones(10.0), 59);
+
+        assert_eq!(calc_num_zones(52.25720214843750), 36);
     }
 
     #[test]
