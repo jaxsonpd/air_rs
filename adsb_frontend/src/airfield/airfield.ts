@@ -70,7 +70,6 @@ export class Airfield {
         ctx.stroke();
 
         ctx.fillStyle = 'white';
-        ctx.font = '11px sans-serif';
         ctx.fillText(this.icao, xy.x + 6, xy.y - 6);
     }
 }

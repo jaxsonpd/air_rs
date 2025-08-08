@@ -49,7 +49,7 @@ export class Position {
     }
 }
 
-export class PostionXY {
+export class PositionXY {
     constructor(
         public x: number,
         public y: number
@@ -59,7 +59,7 @@ export class PostionXY {
 export class Center {
     constructor(
         public pos: Position,
-        public pos_xy: PostionXY,
+        public pos_xy: PositionXY,
         /// pixels / m
         public scale_p_p_m: number,
     ) { }
@@ -69,7 +69,7 @@ export class Center {
      * 
      * Convert a position to an xy position based off the center
      */
-    public get_xy(pos: Position): PostionXY {
+    public get_xy(pos: Position): PositionXY {
         const distance = this.pos.get_distance(pos);
         const bearing = this.pos.get_bearing(pos);
 
@@ -79,7 +79,7 @@ export class Center {
         const x = this.pos_xy.x + dx * this.scale_p_p_m;
         const y = this.pos_xy.y + dy * this.scale_p_p_m;
 
-        return new PostionXY(x, y);
+        return new PositionXY(x, y);
     }
 
     /**

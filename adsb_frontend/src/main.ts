@@ -1,7 +1,7 @@
 import { Aircraft } from "./aircraft";
-import { Center, Position, PostionXY } from "./position";
+import { Center, Position, PositionXY } from "./position";
 import { create_demo_aircraft, update_aircraft_demo, create_demo_center } from "./demo";
-import { Airfield, loadAirfieldsFromCSV} from "./airfield/airfield"
+import { Airfield, loadAirfieldsFromCSV } from "./airfield/airfield"
 import { AircraftSummary } from "../../bindings/AircraftSummary";
 
 
@@ -10,8 +10,8 @@ const CONFIG = {
     DEMO_MODE: false,
     DEFAULT_CENTER_POS: new Position(-41.296466, 174.785409),
     DEFAULT_CENTER_PPM: 60000,
-    DEFAULT_CENTER_XY: new PostionXY(400, 400),
-    FONT: 'bold 12.5px Courier New',
+    DEFAULT_CENTER_XY: new PositionXY(400, 400),
+    FONT: "14px 'Consolas', monospace" ,
     AIRFIELDS_CSV_LOCATION: "/airfields.csv"
 };
 
@@ -53,6 +53,94 @@ function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
 }
 
 /**
+ * Draw a table of aircraft without positions currently
+ * 
+ * @param ctx the canvas to draw on
+ * @param aircraft list of aircraft to draw
+ * @param position the locating position for the table (anchor point)
+ * @param position_corner the position corner to use for locating
+ */
+function draw_aircraft_table(
+    ctx: CanvasRenderingContext2D,
+    aircraft: Aircraft[],
+    position: PositionXY,
+    position_corner: "top-left" | "top-right" | "bottom-left" | "bottom-right"
+) {
+    const filtered = aircraft.filter(a => a.pos === null);
+    if (filtered.length === 0) return;
+
+    const cellWidth = 100;
+    const cellHeight = 24;
+    const padding = 6;
+
+    const headers = ["ICAO", "Callsign", "Altitude", "Last Contact (s)"];
+    const rows = filtered.map(a => [
+        a.icao.toString(16).toUpperCase(),
+        a.callsign || "",
+        a.altitude.toString(),
+        ((Date.now() - a.last_contact) / 1000).toFixed(1)
+    ]);
+
+    const tableData = [headers, ...rows];
+    const cols = headers.length;
+    const totalWidth = cols * cellWidth;
+    const totalHeight = tableData.length * cellHeight;
+
+    // Get base x/y for top-left of table
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+
+    let x = 0;
+    let y = 0;
+
+    switch (position_corner) {
+        case "top-left":
+            x = position.x;
+            y = position.y;
+            break;
+        case "top-right":
+            x = canvasWidth - position.x - totalWidth;
+            y = position.y;
+            break;
+        case "bottom-left":
+            x = position.x;
+            y = canvasHeight - position.y - totalHeight;
+            break;
+        case "bottom-right":
+            x = canvasWidth - position.x - totalWidth;
+            y = canvasHeight - position.y - totalHeight;
+            break;
+    }
+
+    ctx.save(); // protect other drawings
+
+    // Background
+    // ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    // ctx.fillRect(x - padding, y - padding, totalWidth + padding * 2, totalHeight + padding * 2);
+    // ctx.strokeStyle = "#000";
+    // ctx.lineWidth = 1;
+    // ctx.strokeRect(x - padding, y - padding, totalWidth + padding * 2, totalHeight + padding * 2);
+
+    // Grid & text
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#FFFFFF";
+
+    for (let r = 0; r < tableData.length; r++) {
+        for (let c = 0; c < cols; c++) {
+            const cellX = x + c * cellWidth;
+            const cellY = y + r * cellHeight;
+
+            // ctx.strokeRect(cellX, cellY, cellWidth, cellHeight);
+            ctx.fillText(String(tableData[r][c]), cellX + cellWidth / 2, cellY + cellHeight / 2);
+        }
+    }
+
+    ctx.restore(); // restore previous state so no offsets leak
+}
+
+
+/**
  * Handle in coming aircraft data.
  * 
  * @param aircraftData the incoming aircraft data
@@ -62,7 +150,7 @@ function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
 function handle_new_aircraft(aircraftData: any, aircraft: Aircraft[], center: Center) {
     const existingAircraft = aircraft.find(ac => ac.icao === aircraftData.icao);
 
-    let geoPosition = center.pos;
+    let geoPosition = null;
     if (aircraftData.geoPosition) {
         geoPosition = new Position(
             aircraftData.geoPosition.latitude,
@@ -163,6 +251,11 @@ class AircraftDisplayApp {
                 handle_new_aircraft(data, this.aircraft, this.center);
             };
         }
+
+        document.fonts.ready.then(() => {
+            this.ctx.font = CONFIG.FONT;
+            this.animate(performance.now());
+        });
     }
 
     private resizeCanvas() {
@@ -195,21 +288,29 @@ class AircraftDisplayApp {
 
     private animate(timestamp: DOMHighResTimeStamp) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.font = CONFIG.FONT;
 
         this.update_scale()
         this.draw_scale()
 
-        if (this.canvas.width > 200 && this.canvas.height > 200) {
-            draw_statistics(this.ctx, this.aircraft);
-        }
-
+        
+        let no_pos_aircraft: Aircraft[] = [];
         this.aircraft.forEach(plane => {
-            plane.update_pos_xy(this.center);
-            plane.draw(this.ctx);
-            if (plane.check_hover(this.mouse.x, this.mouse.y)) {
-                plane.draw_expanded(this.ctx);
+            if (plane.pos != null) {
+                plane.update_pos_xy(this.center);
+                plane.draw(this.ctx);
+                if (plane.check_hover(this.mouse.x, this.mouse.y)) {
+                    plane.draw_expanded(this.ctx);
+                }
+            } else {
+                no_pos_aircraft.push(plane);
             }
         });
+
+        if (this.canvas.width > 200 && this.canvas.height > 200) {
+            draw_statistics(this.ctx, this.aircraft);
+            draw_aircraft_table(this.ctx, no_pos_aircraft, new PositionXY(5, 5), "top-right");
+        }
 
         if ((timestamp - this.lastUpdate) >= CONFIG.UPDATE_RATE) {
             if (CONFIG.DEMO_MODE) {
