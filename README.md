@@ -19,6 +19,20 @@ Currently the Web GUI is not intergrated with the rest of the design as the GPS 
 
 ![alt text](/doc/images/current_adsb_gui.png)
 
+The web gui can be run from adsb_frontend using:
+
+```
+npm install
+```
+
+```
+npm run build
+```
+
+```
+npm run dev
+```
+
 ### ADSB Terminal Interface Interactive
 
 The terminal interface interactive mode displays the currently recived transponders in an updating table format. This displays infomration collated from several different packets that all relate to a single device in a simple and easy to see way.
