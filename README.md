@@ -6,7 +6,7 @@ an sdr with minimal setup. The key differentiator from programs like sdr++ being
 
 Currently the program supports:
 
-- ADS-B, stream, interactive tui and a web ui comming.
+- ADS-B, stream, interactive tui and a web ui.
 
 The planned features are:
 
