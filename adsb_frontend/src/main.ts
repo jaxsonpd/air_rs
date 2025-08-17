@@ -34,21 +34,21 @@ function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
     ];
 
     const padding = 10;
-    let text_width = Math.max(...lines.map(line => ctx.measureText(line).width));
-    const width = text_width + padding * 2;
-    const height = padding + 15 * lines.length;
-
     const box_x = 10;
     const box_y = 10;
 
-    ctx.fillStyle = 'black';
-    ctx.fillRect(box_x, box_y, width, height);
+    const text_width = Math.max(...lines.map(line => ctx.measureText(line).width));
+    const width = text_width + padding * 2;
+    const text_height = ctx.measureText(lines[0]).actualBoundingBoxAscent + ctx.measureText(lines[0]).actualBoundingBoxDescent;
+    const height = padding + text_height * lines.length;
+
     ctx.strokeStyle = 'white';
+    ctx.lineWidth = text_height/10;
     ctx.strokeRect(box_x, box_y, width, height);
     ctx.fillStyle = 'white';
 
     for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], box_x + padding, box_y + (12.5 * (i + 1)));
+        ctx.fillText(lines[i], box_x + padding, box_y + (text_height * (i + 1)));
     }
 }
 
