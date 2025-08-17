@@ -7,7 +7,7 @@ import { AircraftSummary } from "../../bindings/AircraftSummary";
 
 const CONFIG = {
     UPDATE_RATE: 1000,
-    DEMO_MODE: false,
+    DEMO_MODE: true,
     DEFAULT_CENTER_POS: new Position(-41.296466, 174.785409),
     DEFAULT_CENTER_PPM: 60000,
     DEFAULT_CENTER_XY: new PositionXY(400, 400),
@@ -71,7 +71,7 @@ function draw_aircraft_table(
 
     const cellWidth = 100;
     const cellHeight = 24;
-    const padding = 6;
+    const padding = 10;
 
     const headers = ["ICAO", "Callsign", "Altitude", "Last Contact (s)"];
     const rows = filtered.map(a => [
@@ -81,9 +81,13 @@ function draw_aircraft_table(
         ((Date.now() - a.last_contact) / 1000).toFixed(1)
     ]);
 
+    if (rows.length == 0) {
+        return;
+    }
+
     const tableData = [headers, ...rows];
     const cols = headers.length;
-    const totalWidth = cols * cellWidth;
+    const totalWidth = cols * cellWidth + padding;
     const totalHeight = tableData.length * cellHeight;
 
     // Get base x/y for top-left of table
@@ -114,14 +118,6 @@ function draw_aircraft_table(
 
     ctx.save(); // protect other drawings
 
-    // Background
-    // ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-    // ctx.fillRect(x - padding, y - padding, totalWidth + padding * 2, totalHeight + padding * 2);
-    // ctx.strokeStyle = "#000";
-    // ctx.lineWidth = 1;
-    // ctx.strokeRect(x - padding, y - padding, totalWidth + padding * 2, totalHeight + padding * 2);
-
-    // Grid & text
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillStyle = "#FFFFFF";
@@ -131,7 +127,6 @@ function draw_aircraft_table(
             const cellX = x + c * cellWidth;
             const cellY = y + r * cellHeight;
 
-            // ctx.strokeRect(cellX, cellY, cellWidth, cellHeight);
             ctx.fillText(String(tableData[r][c]), cellX + cellWidth / 2, cellY + cellHeight / 2);
         }
     }
