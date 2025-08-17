@@ -69,10 +69,6 @@ function draw_aircraft_table(
     const filtered = aircraft.filter(a => a.pos === null);
     if (filtered.length === 0) return;
 
-    const cellWidth = 100;
-    const cellHeight = 24;
-    const padding = 10;
-
     const headers = ["ICAO", "Callsign", "Altitude", "Last Contact (s)"];
     const rows = filtered.map(a => [
         a.icao.toString(16).toUpperCase(),
@@ -80,12 +76,17 @@ function draw_aircraft_table(
         a.altitude.toString(),
         ((Date.now() - a.last_contact) / 1000).toFixed(1)
     ]);
-
-    if (rows.length == 0) {
-        return;
-    }
-
     const tableData = [headers, ...rows];
+
+    const cellWidth = Math.max(100, 
+                        Math.max(...tableData.map(line => 
+                            Math.max(...line.map(cell => ctx.measureText(cell).width))
+                        )
+                    ));
+    const cellHeight = 24;
+    const padding = 10;
+
+    
     const cols = headers.length;
     const totalWidth = cols * cellWidth + padding;
     const totalHeight = tableData.length * cellHeight;
