@@ -286,9 +286,15 @@ class AircraftDisplayApp {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.font = CONFIG.FONT;
 
-        this.update_scale()
-        this.draw_scale()
+        this.update_scale();
+        this.draw_scale();
 
+        if ((timestamp - this.lastUpdate) >= CONFIG.UPDATE_RATE) {
+            if (CONFIG.DEMO_MODE) {
+                update_aircraft_demo(this.aircraft);
+            }
+            this.lastUpdate = timestamp;
+        }
         
         let no_pos_aircraft: Aircraft[] = [];
         this.aircraft.forEach(plane => {
@@ -303,16 +309,9 @@ class AircraftDisplayApp {
             }
         });
 
-        if (this.canvas.width > 200 && this.canvas.height > 200) {
+        if (this.canvas.width > 700 && this.canvas.height > 500) {
             draw_statistics(this.ctx, this.aircraft);
             draw_aircraft_table(this.ctx, no_pos_aircraft, new PositionXY(5, 5), "top-right");
-        }
-
-        if ((timestamp - this.lastUpdate) >= CONFIG.UPDATE_RATE) {
-            if (CONFIG.DEMO_MODE) {
-                update_aircraft_demo(this.aircraft);
-            }
-            this.lastUpdate = timestamp;
         }
 
         this.airfields.forEach(airfield => {

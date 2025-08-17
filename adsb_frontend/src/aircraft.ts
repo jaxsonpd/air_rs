@@ -26,36 +26,40 @@ export class Aircraft {
      * Draw a aeroplane on the canvas just position icao and altitude
      */
     public draw(ctx: CanvasRenderingContext2D) {
+        const line_end = new PositionXY(this.pos_xy.x + 10, this.pos_xy.y - 17.5); 
+
+        /// Draw dot
         ctx.fillStyle = 'white';
         ctx.beginPath();
         ctx.arc(this.pos_xy.x, this.pos_xy.y, 3, 0, 2 * Math.PI);
         ctx.fill();
 
-        const boxX = this.pos_xy.x + 10
-        const boxY = this.pos_xy.y - 35;
-
+        // Draw indicator line
         ctx.strokeStyle = 'white';
         ctx.beginPath();
         ctx.moveTo(this.pos_xy.x + 2, this.pos_xy.y - 2);
-        ctx.lineTo(boxX, boxY + 35 / 2);
+        ctx.lineTo(line_end.x, line_end.y);
         ctx.stroke();
-
-        if (!this.extended_pane) {
+        
+        if (!this.extended_pane) { 
             const icao_line = `${this.icao.toString(16)}`;
             const altitude_line = `${this.altitude} ft`;
-            const padding = 4
+
             const text_width = Math.max(ctx.measureText(icao_line).width, ctx.measureText(altitude_line).width)
-            const box_Height = 30;
+            const text_height = ctx.measureText(icao_line).actualBoundingBoxAscent + ctx.measureText(icao_line).actualBoundingBoxDescent;
+            
+            const padding = new PositionXY(7, 5);
+            const box_height = padding.y * 3 + text_height * 2;
+            const box_width = padding.x * 2 + text_width;
 
+            const box_pos = new PositionXY(line_end.x, this.pos_xy.y - box_height);
 
-            ctx.fillStyle = 'black';
-            ctx.fillRect(boxX, boxY, text_width + padding * 2, box_Height);
             ctx.strokeStyle = 'white';
-            ctx.strokeRect(boxX, boxY, text_width + padding * 2, box_Height);
+            ctx.strokeRect(box_pos.x, box_pos.y, box_width, box_height);
 
             ctx.fillStyle = 'white';
-            ctx.fillText(icao_line, boxX + padding, boxY + 12);
-            ctx.fillText(altitude_line, boxX + padding, boxY + 25);
+            ctx.fillText(icao_line, box_pos.x + padding.x, box_pos.y + padding.y + text_height);
+            ctx.fillText(altitude_line, box_pos.x + padding.x, box_pos.y + padding.y * 2 + text_height * 2);
         } else {
             this.draw_expanded(ctx);
         }
