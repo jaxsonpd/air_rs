@@ -3,6 +3,7 @@ import { Center, Position, PositionXY } from "./position";
 import { create_demo_aircraft, update_aircraft_demo, create_demo_center } from "./demo";
 import { Airfield, loadAirfieldsFromCSV } from "./airfield/airfield"
 import { AircraftSummary } from "../../bindings/AircraftSummary";
+import { get_text_height } from "./utils";
 
 
 const CONFIG = {
@@ -11,7 +12,7 @@ const CONFIG = {
     DEFAULT_CENTER_POS: new Position(-41.296466, 174.785409),
     DEFAULT_CENTER_PPM: 60000,
     DEFAULT_CENTER_XY: new PositionXY(400, 400),
-    FONT: "14px 'Consolas', monospace" ,
+    FONT: "16px 'Consolas', monospace" ,
     AIRFIELDS_CSV_LOCATION: "/airfields.csv"
 };
 
@@ -34,21 +35,21 @@ function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
     ];
 
     const padding = 10;
-    const box_x = 10;
-    const box_y = 10;
+    const box_x = 20;
+    const box_y = 20;
 
     const text_width = Math.max(...lines.map(line => ctx.measureText(line).width));
-    const width = text_width + padding * 2;
-    const text_height = ctx.measureText(lines[0]).actualBoundingBoxAscent + ctx.measureText(lines[0]).actualBoundingBoxDescent;
-    const height = padding + text_height * lines.length;
+    // const width = text_width + padding * 2;
+    const text_height = get_text_height(ctx, lines[0]);
+    // const height = padding + text_height * lines.length;
 
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = text_height/10;
-    ctx.strokeRect(box_x, box_y, width, height);
+    // ctx.strokeStyle = 'white';
+    // ctx.lineWidth = text_height/10;
+    // ctx.strokeRect(box_x, box_y, width, height);
     ctx.fillStyle = 'white';
 
     for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], box_x + padding, box_y + (text_height * (i + 1)));
+        ctx.fillText(lines[i], box_x, box_y + (i) * (padding + text_height));
     }
 }
 
@@ -83,7 +84,7 @@ function draw_aircraft_table(
                             Math.max(...line.map(cell => ctx.measureText(cell).width))
                         )
                     ));
-    const cellHeight = 24;
+    const cellHeight = get_text_height(ctx, tableData[0][0]);
     const padding = 10;
 
     
@@ -126,9 +127,9 @@ function draw_aircraft_table(
     for (let r = 0; r < tableData.length; r++) {
         for (let c = 0; c < cols; c++) {
             const cellX = x + c * cellWidth;
-            const cellY = y + r * cellHeight;
+            const cellY = y + (r) * (cellHeight + padding);
 
-            ctx.fillText(String(tableData[r][c]), cellX + cellWidth / 2, cellY + cellHeight / 2);
+            ctx.fillText(String(tableData[r][c]), cellX + cellWidth / 2, cellY);
         }
     }
 
@@ -311,7 +312,7 @@ class AircraftDisplayApp {
 
         if (this.canvas.width > 700 && this.canvas.height > 500) {
             draw_statistics(this.ctx, this.aircraft);
-            draw_aircraft_table(this.ctx, no_pos_aircraft, new PositionXY(5, 5), "top-right");
+            draw_aircraft_table(this.ctx, no_pos_aircraft, new PositionXY(20, 20), "top-right");
         }
 
         this.airfields.forEach(airfield => {
