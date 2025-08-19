@@ -235,7 +235,7 @@ class AircraftDisplayApp {
             const mx = e.clientX;
             const my = e.clientY;
             for (const ac of this.aircraft) {
-                if (ac.check_hover(mx, my)) {
+                if (ac.update_hover(mx, my)) {
                     ac.toggle_expanded();
                     return;
                 }
@@ -302,9 +302,7 @@ class AircraftDisplayApp {
             if (plane.pos != null) {
                 plane.update_pos_xy(this.center);
                 plane.draw(this.ctx);
-                if (plane.check_hover(this.mouse.x, this.mouse.y)) {
-                    plane.draw_expanded(this.ctx);
-                }
+                plane.update_hover(this.mouse.x, this.mouse.y);
             } else {
                 no_pos_aircraft.push(plane);
             }

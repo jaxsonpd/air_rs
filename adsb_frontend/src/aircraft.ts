@@ -5,6 +5,8 @@ import { Position, Center, PositionXY } from "./position";
 export class Aircraft {
     private pos_xy: PositionXY = new PositionXY(0, 0);
     private extended_pane: boolean = false;
+    private hover: boolean = false;
+    private suppress_details: boolean = false;
     public last_contact: number = Date.now();
     constructor(
         public icao: number,
@@ -41,7 +43,7 @@ export class Aircraft {
         ctx.lineTo(line_end.x, line_end.y);
         ctx.stroke();
         
-        if (!this.extended_pane) { 
+        if (!this.extended_pane && !this.hover || this.suppress_details) { 
             const icao_line = `${this.icao.toString(16)}`;
             const altitude_line = `${this.altitude} ft`;
 
@@ -114,13 +116,35 @@ export class Aircraft {
      */
     public toggle_expanded() {
         this.extended_pane = !this.extended_pane;
+
+        if (!this.extended_pane) {
+            this.suppress_details = true;
+        } else {
+            this.suppress_details = false;
+        }
     }
 
-    public check_hover(x: number, y: number) {
+    /**
+     * Check if the mouse is over the window updating the 
+     * internal state if so
+     * 
+     * @param x the mouse x position
+     * @param y the mouse y position
+     * @returns true if hovering
+     */
+    public update_hover(x: number, y: number): boolean {
         const dx = x - this.pos_xy.x;
         const dy = y - this.pos_xy.y;
 
         const dist = Math.sqrt(dx * dx + dy * dy);
-        return dist < 8;
+        const hover =  dist < 8;
+
+        this.hover = hover;
+
+        if (!hover) {
+            this.suppress_details = false;
+        }
+
+        return hover;
     }
 }
