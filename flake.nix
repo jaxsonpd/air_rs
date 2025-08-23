@@ -18,7 +18,14 @@
             (pkgs.rust-bin.stable.latest.default) # latest stable rust (rustc + cargo)
             nodejs
             nodePackages.npm
+            pkg-config
+            fontconfig
+            soapysdr-with-plugins
           ];
+
+          shellHook = ''
+            export SOAPY_SDR_PLUGIN_PATH="${pkgs.soapysdr-with-plugins}/lib/SoapySDR"
+          '';
         };
       });
 }
