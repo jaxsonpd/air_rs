@@ -21,10 +21,13 @@
             pkg-config
             fontconfig
             soapysdr-with-plugins
+            clang
+            llvmPackages.libclang   # <--- bindgen needs this
           ];
 
           shellHook = ''
             export SOAPY_SDR_PLUGIN_PATH="${pkgs.soapysdr-with-plugins}/lib/SoapySDR"
+            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
           '';
         };
       });
