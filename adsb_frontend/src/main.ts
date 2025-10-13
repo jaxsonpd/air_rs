@@ -4,6 +4,7 @@ import { create_demo_aircraft, update_aircraft_demo, create_demo_center } from "
 import { Airfield, loadAirfieldsFromCSV } from "./airfield/airfield"
 import { AircraftSummary } from "../../bindings/AircraftSummary";
 import { get_text_height } from "./utils";
+import { ConfigBar } from "./config_bar/config_bar";
 
 
 const CONFIG = {
@@ -18,7 +19,7 @@ const CONFIG = {
 
 /**
  * Draw a statistics window in the top left corner of the screeen
- * 
+ *
  * @param ctx the canvas element to draw on
  * @param aircraft the aircraft to pull data from
  */
@@ -55,7 +56,7 @@ function draw_statistics(ctx: CanvasRenderingContext2D, aircraft: Aircraft[]) {
 
 /**
  * Draw a table of aircraft without positions currently
- * 
+ *
  * @param ctx the canvas to draw on
  * @param aircraft list of aircraft to draw
  * @param position the locating position for the table (anchor point)
@@ -79,15 +80,15 @@ function draw_aircraft_table(
     ]);
     const tableData = [headers, ...rows];
 
-    const cellWidth = Math.max(100, 
-                        Math.max(...tableData.map(line => 
+    const cellWidth = Math.max(100,
+                        Math.max(...tableData.map(line =>
                             Math.max(...line.map(cell => ctx.measureText(cell).width))
                         )
                     ));
     const cellHeight = get_text_height(ctx, tableData[0][0]);
     const padding = 10;
 
-    
+
     const cols = headers.length;
     const totalWidth = cols * cellWidth + padding;
     const totalHeight = tableData.length * cellHeight;
@@ -139,7 +140,7 @@ function draw_aircraft_table(
 
 /**
  * Handle in coming aircraft data.
- * 
+ *
  * @param aircraftData the incoming aircraft data
  * @param aircraft the current aircraft available
  * @param center the center point of the screen for placement
@@ -177,6 +178,7 @@ class AircraftDisplayApp {
     private aircraft: Aircraft[] = [];
     private airfields: Airfield[] = [];
     private center: Center;
+    private config_bar: ConfigBar;
     private mouse = { x: 0, y: 0 };
     private lastUpdate = performance.now();
     private socket: WebSocket | null;
@@ -218,12 +220,15 @@ class AircraftDisplayApp {
         this.resizeCanvas();
         this.center.recenter(this.canvas.width, this.canvas.height);
         requestAnimationFrame(this.animate.bind(this));
+
+        this.config_bar = new ConfigBar(new PositionXY(this.canvas.width / 2, 25))
     }
 
     private initEventListeners() {
         window.addEventListener("resize", () => {
             this.resizeCanvas();
             this.center.recenter(this.canvas.width, this.canvas.height);
+            this.config_bar.center = new PositionXY(this.canvas.width / 2, 25);
         });
 
         this.canvas.addEventListener("mousemove", e => {
@@ -296,7 +301,7 @@ class AircraftDisplayApp {
             }
             this.lastUpdate = timestamp;
         }
-        
+
         let no_pos_aircraft: Aircraft[] = [];
         this.aircraft.forEach(plane => {
             if (plane.pos != null) {
@@ -311,6 +316,7 @@ class AircraftDisplayApp {
         if (this.canvas.width > 700 && this.canvas.height > 500) {
             draw_statistics(this.ctx, this.aircraft);
             draw_aircraft_table(this.ctx, no_pos_aircraft, new PositionXY(20, 20), "top-right");
+            this.config_bar.draw(this.ctx);
         }
 
         this.airfields.forEach(airfield => {
