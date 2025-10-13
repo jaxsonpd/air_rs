@@ -232,15 +232,15 @@ class AircraftDisplayApp {
         });
 
         this.canvas.addEventListener("mousemove", e => {
-            this.mouse.x = e.clientX;
-            this.mouse.y = e.clientY;
+            this.mouse.x = e.offsetX;
+            this.mouse.y = e.offsetY;
         });
 
         this.canvas.addEventListener("click", e => {
-            const mx = e.clientX;
-            const my = e.clientY;
+            const mx = e.offsetX;
+            const my = e.offsetY;
             for (const ac of this.aircraft) {
-                if (ac.update_hover(mx, my)) {
+                if (ac.check_hover(mx, my)) {
                     ac.toggle_expanded();
                     return;
                 }
@@ -307,7 +307,7 @@ class AircraftDisplayApp {
             if (plane.pos != null) {
                 plane.update_pos_xy(this.center);
                 plane.draw(this.ctx);
-                plane.update_hover(this.mouse.x, this.mouse.y);
+                plane.check_hover(this.mouse.x, this.mouse.y);
             } else {
                 no_pos_aircraft.push(plane);
             }

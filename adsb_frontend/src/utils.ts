@@ -18,13 +18,15 @@ export function get_text_height(ctx: CanvasRenderingContext2D, text: string): nu
  * @param center the center postion of the box
  * @param width_char the number of characters to hold
  * @param radius the radius in pixels of the edge of the box
+ *
+ * @returns the size of the rectangle including the radius
  */
 export function roundRectTextBox(
     ctx: CanvasRenderingContext2D,
     center: PositionXY,
     width_char: number = 30,
     radius: number,
-) {
+): PositionXY {
     const height = get_text_height(ctx, "h")*2;
     const width = width_char * ctx.measureText("A").width
     const position = new PositionXY(center.x - width / 2, center.y - height / 2);
@@ -41,4 +43,6 @@ export function roundRectTextBox(
     ctx.quadraticCurveTo(position.x, position.y, position.x + radius, position.y);
     ctx.closePath();
     ctx.stroke();
+
+    return new PositionXY(width, height);
 }
