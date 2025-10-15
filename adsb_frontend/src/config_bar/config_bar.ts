@@ -1,12 +1,13 @@
 /// Implementation of a searchable config that can be interacted with using a search bar
 
 import { PositionXY } from "../position";
-import { roundRectTextBox } from "../utils";
+import { roundRectTextBox, get_text_height } from "../utils";
 
 export class ConfigBar {
     private bar_size: PositionXY = new PositionXY(0, 0);
     private focused: boolean = false;
-    private text: string = "Search ...";
+    private placeholder: string = "Search ...";
+    private text: string = "";
 
     constructor(
         public center: PositionXY,
@@ -26,7 +27,7 @@ export class ConfigBar {
         } else if (e.key === "Enter") {
             this.on_search(this.text);
         } else if (e.key === "Escape") {
-            this.focused = false;
+            this.lose_focus();
         } else if (e.key.length === 1) {
             this.text += e.key;
         }
@@ -39,15 +40,29 @@ export class ConfigBar {
     public draw(ctx: CanvasRenderingContext2D) {
         this.bar_size = roundRectTextBox(ctx, this.center, 60, 10);
         ctx.fillStyle = "#cccccc";
-        ctx.fillText(this.text, this.center.x - ctx.measureText(this.text).width / 2, this.center.y);
+        if (!this.focused) {
+            ctx.fillText(this.placeholder, this.center.x - (ctx.measureText(this.placeholder).width / 2), this.center.y + get_text_height(ctx, "h") /2);
+        } else {
+            ctx.fillText(this.text, this.center.x - (this.bar_size.x / 2 - ctx.measureText("h").width), this.center.y + get_text_height(ctx, "h") /2);
+        }
     }
 
     private on_click(ev: MouseEvent) {
         if (this.check_hover(ev.offsetX, ev.offsetY)) {
-            this.focused = true;
+            this.gain_focus();
+        } else {
+            this.lose_focus();
         }
     }
 
+    private gain_focus() {
+        this.focused = true;
+    }
+
+    private lose_focus() {
+        this.focused = false;
+        this.text = "";
+    }
 
     /**
      * Check if the mouse is over the window
