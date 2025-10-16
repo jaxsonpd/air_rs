@@ -3,13 +3,21 @@
 import { Center, Position } from "../position";
 import { CONFIG } from "../config";
 
+export class AutocompleteSuggestion {
+    constructor (
+    public command: string, /// the command string
+    public example_value: string, /// and example value
+    public similarity: number /// how similar this entry is to the search text from 0 to 1
+    ) {}
+}
+
 export interface ConfigStore<T> {
   key: string; // e.g. "center", "theme", "layout"
   get(): T;
   set(newValue: T): void;
 
   // For search integration
-  autocomplete_search(search_string: string): Array<{ label: string; example_value: string}>;
+  autocomplete_search(search_string: string): Array<AutocompleteSuggestion>;
   execute_search(search_string: string): boolean;
 
   // Optional: Reactivity hooks or event system
@@ -31,7 +39,7 @@ function string_similarity(search: string, command: string): number {
         }
     }
 
-    return num_correct / search.length;
+    return num_correct / Math.min(search.length, command.length);
 
 }
 
@@ -59,11 +67,12 @@ class CenterStore implements ConfigStore<Center> {
         this.center = this.center;
     }
 
-    autocomplete_search(search_string: string): Array<{ label: string; example_value: string; }> {
-        let close_values: Array<{ label: string; example_value: string; }> = [];
+    autocomplete_search(search_string: string): Array<AutocompleteSuggestion> {
+        let close_values: Array<AutocompleteSuggestion> = [];
         this.autocomplete_set.forEach((entry) => {
-            if (string_similarity(search_string, entry.label) > 0.9) {
-                close_values.push(entry);
+            const similarity = string_similarity(search_string, entry.label)
+            if (similarity > 0.9) {
+                close_values.push(new AutocompleteSuggestion(entry.label, entry.example_value, similarity));
             }
         });
 
@@ -91,7 +100,7 @@ export class SearchManager {
     constructor () {
     }
 
-    autocomplete_search(search_string: string): Array<{ label: string; example_value: string}> {
+    autocomplete_search(search_string: string): Array<AutocompleteSuggestion> {
         return this.stores.flatMap(s => s.autocomplete_search(search_string));
     }
 
