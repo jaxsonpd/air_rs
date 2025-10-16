@@ -17,6 +17,7 @@ export function get_text_height(ctx: CanvasRenderingContext2D, text: string): nu
  * @param ctx the canvas to draw on
  * @param center the center postion of the box
  * @param width_char the number of characters to hold
+ * @param heigh_char the height of the box in characters
  * @param radius the radius in pixels of the edge of the box
  *
  * @returns the size of the rectangle including the radius
@@ -24,10 +25,11 @@ export function get_text_height(ctx: CanvasRenderingContext2D, text: string): nu
 export function roundRectTextBox(
     ctx: CanvasRenderingContext2D,
     center: PositionXY,
-    width_char: number = 30,
-    radius: number,
+    width_char: number = 60,
+    heigh_char: number = 1,
+    radius: number = 10,
 ): PositionXY {
-    const height = get_text_height(ctx, "h")*2;
+    const height = get_text_height(ctx, "h")*(heigh_char + 1);
     const width = width_char * ctx.measureText("A").width
     const position = new PositionXY(center.x - width / 2, center.y - height / 2);
 

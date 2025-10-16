@@ -2,12 +2,16 @@
 
 import { PositionXY } from "../position";
 import { roundRectTextBox, get_text_height } from "../utils";
+import { SearchManager } from "../store/store";
+
+const BAR_SIZE = 60;
 
 export class ConfigBar {
     private bar_size: PositionXY = new PositionXY(0, 0);
     private focused: boolean = false;
     private placeholder: string = "Search ...";
     private text: string = "";
+    private search_manager: SearchManager = new SearchManager();
 
     constructor(
         public center: PositionXY,
@@ -34,18 +38,70 @@ export class ConfigBar {
     }
 
     private on_search(text: string) {
-        console.log(text);
+        this.search_manager.execute_search(text);
+    }
+
+    private draw_coloured_text(ctx: CanvasRenderingContext2D, text_pos: PositionXY, label: string, example_value: string = "") {
+        const labelWords = label.split(" ");
+        let x = text_pos.x;
+        const y = text_pos.y;
+
+        // First word of label — purple
+        ctx.fillStyle = "#ff00ffff";
+        const firstWord = labelWords[0] ?? "";
+        ctx.fillText(firstWord, x, y);
+        x += ctx.measureText(firstWord + " ").width;
+
+        // Remaining label — green
+        ctx.fillStyle = "#008000";
+        const restLabel = labelWords.slice(1).join(" ");
+        ctx.fillText(restLabel, x, y);
+        x += ctx.measureText(restLabel + " ").width;
+
+        // Example value — grey
+        ctx.fillStyle = "#888888";
+        ctx.fillText(example_value, x, y);
     }
 
     public draw(ctx: CanvasRenderingContext2D) {
-        this.bar_size = roundRectTextBox(ctx, this.center, 60, 10);
-        ctx.fillStyle = "#cccccc";
+        const autocompletions: { label: string; example_value: string }[] = this.search_manager.autocomplete_search(this.text);
+
         if (!this.focused) {
-            ctx.fillText(this.placeholder, this.center.x - (ctx.measureText(this.placeholder).width / 2), this.center.y + get_text_height(ctx, "h") /2);
+            // NOT FOCUSED — Draw placeholder
+            ctx.fillStyle = "#cccccc";
+            ctx.strokeStyle = "#cccccc";
+            ctx.fillText(
+                this.placeholder,
+                this.center.x - (ctx.measureText(this.placeholder).width / 2),
+                this.center.y + get_text_height(ctx, "h") / 2
+            );
+            this.bar_size = roundRectTextBox(ctx, this.center);
+            return;
         } else {
-            ctx.fillText(this.text, this.center.x - (this.bar_size.x / 2 - ctx.measureText("h").width), this.center.y + get_text_height(ctx, "h") /2);
-        }
+            // FOCUSED — Draw input + autocomplete box
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#ffffff";
+            const lineWidth = ctx.lineWidth;
+            ctx.lineWidth = 2;
+
+            this.bar_size = roundRectTextBox(ctx, this.center);
+            
+            
+            const text_pos = new PositionXY(this.center.x - this.bar_size.x / 2 + ctx.measureText(" ").width, this.center.y + get_text_height(ctx, "h") / 2)
+            this.draw_coloured_text(ctx, text_pos, this.text);
+
+            const autocomplete_box_pos: PositionXY = new PositionXY(this.center.x, this.center.y + get_text_height(ctx, "h") * (autocompletions.length / 2 + 2) )
+            const autocomplete_size = roundRectTextBox(ctx, autocomplete_box_pos, 60, autocompletions.length);
+            
+            let autocomplete_text_pos = new PositionXY(text_pos.x, text_pos.y + get_text_height(ctx, "h") * 2.5)
+            autocompletions.forEach((entry) => {
+                this.draw_coloured_text(ctx, autocomplete_text_pos, entry.label, entry.example_value);
+                autocomplete_text_pos.y += get_text_height(ctx, "h")
+            });
+            ctx.lineWidth = lineWidth;
+        }           
     }
+
 
     private on_click(ev: MouseEvent) {
         if (this.check_hover(ev.offsetX, ev.offsetY)) {
