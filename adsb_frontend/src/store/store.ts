@@ -1,7 +1,7 @@
 // Store for data for the project
 
 import { Center, Position } from "../position";
-import { CONFIG } from "../config"; 
+import { CONFIG } from "../config";
 
 export interface ConfigStore<T> {
   key: string; // e.g. "center", "theme", "layout"
@@ -20,7 +20,7 @@ export interface ConfigStore<T> {
  * Identify how similar to strings are
  * @param search the search string
  * @param command the command string
- * 
+ *
  * @returns the similarity between the two strings from 0 to 1 (identical)
  */
 function string_similarity(search: string, command: string): number {
@@ -32,7 +32,7 @@ function string_similarity(search: string, command: string): number {
     }
 
     return num_correct / search.length;
-    
+
 }
 
 class CenterStore implements ConfigStore<Center> {
@@ -71,14 +71,14 @@ class CenterStore implements ConfigStore<Center> {
     }
 
     execute_search(search_string: string): boolean {
-        if (search_string == "map center geo") {
+        if (search_string.startsWith("map center geo")) {
             let latitude = Number(search_string.replace("map center geo", "").split(",")[0]);
             let longitude = Number(search_string.replace("map center geo", "").split(",")[1]);
             console.log(latitude, longitude);
-            this.center.pos = new Position(latitude, longitude);
+            this.center.pos.latitude = latitude;
+            this.center.pos.longitude = longitude;
         }
 
-        console.log("Center: ", this.center)
         return true;
     }
 }
@@ -93,7 +93,7 @@ export class SearchManager {
 
     autocomplete_search(search_string: string): Array<{ label: string; example_value: string}> {
         return this.stores.flatMap(s => s.autocomplete_search(search_string));
-    } 
+    }
 
     execute_search(search_string: string): boolean {
         console.log("Execute %s", search_string);
