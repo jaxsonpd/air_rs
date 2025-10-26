@@ -2,6 +2,7 @@
 
 import { Center, Position } from "../position";
 import { CONFIG } from "../config";
+import { Aircraft } from "../aircraft";
 
 export class AutocompleteSuggestion {
     constructor (
@@ -92,10 +93,57 @@ class CenterStore implements ConfigStore<Center> {
     }
 }
 
+class AircraftStore implements ConfigStore<Array<Aircraft>> {
+    private aircraft_array: Array<Aircraft> = [];
+    key: string = "aircraft";
+
+    set(newValue: Aircraft[]): void {
+        this.aircraft_array = newValue;
+    }
+
+    get(): Aircraft[] {
+        return this.aircraft_array;
+    }
+
+    add_aircraft(aircraft: Aircraft): void {
+        this.aircraft_array.concat(aircraft);
+    }
+
+    remove_aircraft(aircraft: Aircraft): void {
+        this.aircraft_array = this.aircraft_array.filter(x => x != aircraft);
+    }
+
+    private autocomplete_set: Array<{ label: string; example_value: string; }> = [
+        { label: "aircraft view icao", example_value: "8723c8"},
+        { label: "aircraft view callsign", example_value: "ANZ100"},
+    ]
+
+    autocomplete_search(search_string: string): Array<AutocompleteSuggestion> {
+        let close_values: Array<AutocompleteSuggestion> = [];
+        this.autocomplete_set.forEach((entry) => {
+            const similarity = string_similarity(search_string, entry.label)
+            if (similarity > 0.9) {
+                close_values.push(new AutocompleteSuggestion(entry.label, entry.example_value, similarity));
+            }
+        });
+
+        return close_values;
+    }
+
+    execute_search(search_string: string): boolean {
+        console.log(search_string);
+        console.log(aircraft_store.get());
+        return true;
+    }
+
+}
+
+export let aircraft_store = new AircraftStore
+
 export let center_store = new CenterStore;
 
 export class SearchManager {
-    private stores: ConfigStore<any>[] = [center_store];
+    private stores: ConfigStore<any>[] = [center_store, aircraft_store];
 
     constructor () {
     }

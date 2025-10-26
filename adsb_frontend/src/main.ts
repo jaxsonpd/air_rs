@@ -5,7 +5,7 @@ import { Airfield, loadAirfieldsFromCSV } from "./airfield/airfield"
 import { get_text_height } from "./utils";
 import { ConfigBar } from "./config_bar/config_bar";
 import { CONFIG } from "./config";
-import { center_store } from "./store/store";
+import { center_store, aircraft_store } from "./store/store";
 
 /**
  * Draw a statistics window in the top left corner of the screeen
@@ -165,7 +165,6 @@ function handle_new_aircraft(aircraftData: any, aircraft: Aircraft[], center: Ce
 class AircraftDisplayApp {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
-    private aircraft: Aircraft[] = [];
     private airfields: Airfield[] = [];
     private config_bar: ConfigBar;
     private mouse = { x: 0, y: 0 };
@@ -190,7 +189,7 @@ class AircraftDisplayApp {
         }
 
         if (CONFIG.DEMO_MODE) {
-            this.aircraft = create_demo_aircraft();
+            aircraft_store.set(create_demo_aircraft());
             center_store.set(create_demo_center());
         }
 
@@ -221,7 +220,7 @@ class AircraftDisplayApp {
         this.canvas.addEventListener("click", e => {
             const mx = e.offsetX;
             const my = e.offsetY;
-            for (const ac of this.aircraft) {
+            for (const ac of aircraft_store.get()) {
                 if (ac.check_hover(mx, my)) {
                     ac.toggle_expanded();
                     return;
@@ -232,7 +231,7 @@ class AircraftDisplayApp {
         if (this.socket != null) {
             this.socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                handle_new_aircraft(data, this.aircraft, center_store.get());
+                handle_new_aircraft(data, aircraft_store.get(), center_store.get());
             };
         }
 
@@ -249,10 +248,10 @@ class AircraftDisplayApp {
     }
 
     private update_scale() {
-        if (this.aircraft.length === 0) {
+        if (aircraft_store.get().length === 0) {
             center_store.get().scale_p_p_m = this.canvas.width / CONFIG.DEFAULT_CENTER_PPM;
         } else {
-            const bounds = this.aircraft.reduce((acc, plane) => {
+            const bounds = aircraft_store.get().reduce((acc, plane) => {
                 if (plane.pos) {
                     acc.maxdist = Math.max(acc.maxdist, plane.pos.get_distance(center_store.get().pos));
                 }
@@ -279,13 +278,13 @@ class AircraftDisplayApp {
 
         if ((timestamp - this.lastUpdate) >= CONFIG.UPDATE_RATE) {
             if (CONFIG.DEMO_MODE) {
-                update_aircraft_demo(this.aircraft);
+                update_aircraft_demo(aircraft_store.get());
             }
             this.lastUpdate = timestamp;
         }
 
         let no_pos_aircraft: Aircraft[] = [];
-        this.aircraft.forEach(plane => {
+        aircraft_store.get().forEach(plane => {
             if (plane.pos != null) {
                 plane.update_pos_xy(center_store.get());
                 plane.draw(this.ctx);
@@ -296,7 +295,7 @@ class AircraftDisplayApp {
         });
 
         if (this.canvas.width > 700 && this.canvas.height > 500) {
-            draw_statistics(this.ctx, this.aircraft);
+            draw_statistics(this.ctx, aircraft_store.get());
             draw_aircraft_table(this.ctx, no_pos_aircraft, new PositionXY(20, 20), "top-right");
             this.config_bar.draw(this.ctx);
         }
