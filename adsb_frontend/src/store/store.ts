@@ -87,6 +87,14 @@ class CenterStore implements ConfigStore<Center> {
             console.log(latitude, longitude);
             this.center.pos.latitude = latitude;
             this.center.pos.longitude = longitude;
+        } else if (search_string.startsWith("map center icao")) {
+            let icao_aircraft = aircraft_store.get().find((aircraft) => 
+                aircraft.icao == parseInt(search_string.replace("map center icao", ""), 16)
+            );
+            
+            if (icao_aircraft != undefined && icao_aircraft.pos != null) {
+                this.center.pos = icao_aircraft.pos;
+            }
         }
 
         return true;

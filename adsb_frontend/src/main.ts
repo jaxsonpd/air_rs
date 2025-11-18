@@ -265,6 +265,8 @@ class AircraftDisplayApp {
     private draw_scale() {
         this.ctx.beginPath();
         this.ctx.moveTo(25, this.canvas.height - 25);
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#FFFFFF";
         this.ctx.lineTo(25 + center_store.get().scale_p_p_m * 1000, this.canvas.height - 25);
         this.ctx.stroke();
     }
