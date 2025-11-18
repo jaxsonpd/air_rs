@@ -29,7 +29,7 @@ export class Aircraft {
      * Draw a aeroplane on the canvas just position icao and altitude
      */
     public draw(ctx: CanvasRenderingContext2D) {
-        const line_end = new PositionXY(this.pos_xy.x + 10, this.pos_xy.y - 17.5); 
+        const line_end = new PositionXY(this.pos_xy.x + 10, this.pos_xy.y - 17.5);
 
         /// Draw dot
         ctx.fillStyle = 'white';
@@ -43,14 +43,14 @@ export class Aircraft {
         ctx.moveTo(this.pos_xy.x + 2, this.pos_xy.y - 2);
         ctx.lineTo(line_end.x, line_end.y);
         ctx.stroke();
-        
-        if (!this.extended_pane && !this.hover || this.suppress_details) { 
+
+        if (!this.extended_pane && !this.hover || this.suppress_details) {
             const icao_line = `${this.icao.toString(16)}`;
             const altitude_line = `${this.altitude} ft`;
 
             const text_width = Math.max(ctx.measureText(icao_line).width, ctx.measureText(altitude_line).width)
             const text_height = get_text_height(ctx, icao_line);
-            
+
             const padding = new PositionXY(7, 5);
             const box_height = padding.y * 3 + text_height * 2;
             const box_width = padding.x * 2 + text_width;
@@ -84,11 +84,11 @@ export class Aircraft {
             `Last Contact: ${new Date(this.last_contact).toLocaleTimeString()}`,
             latLonLine
         ]
-        const line_end = new PositionXY(this.pos_xy.x + 10, this.pos_xy.y - 17.5); 
+        const line_end = new PositionXY(this.pos_xy.x + 10, this.pos_xy.y - 17.5);
 
         const text_width = Math.max(...lines.map(line => ctx.measureText(line).width));
         const text_height = get_text_height(ctx, lines[0]);
-        
+
         const padding = new PositionXY(7, 5);
         const box_height = padding.y * 2 + (padding.y + text_height) * lines.length;
         const box_width = padding.x * 2 + text_width;
@@ -121,14 +121,14 @@ export class Aircraft {
     }
 
     /**
-     * Check if the mouse is over the window updating the 
+     * Check if the mouse is over the window updating the
      * internal state if so
-     * 
+     *
      * @param x the mouse x position
      * @param y the mouse y position
      * @returns true if hovering
      */
-    public update_hover(x: number, y: number): boolean {
+    public check_hover(x: number, y: number): boolean {
         const dx = x - this.pos_xy.x;
         const dy = y - this.pos_xy.y;
 
