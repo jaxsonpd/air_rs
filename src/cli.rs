@@ -25,11 +25,18 @@ pub enum Commands {
         #[arg(short, long)]
         device: Option<u32>,
 
-        #[arg(short = 'm', long = "mode", default_value_t = DisplayMode::Stream)]
+        #[arg(short, long, default_value_t = DisplayMode::Stream)]
         mode: DisplayMode,
 
         #[arg(short, long)]
         playback: Option<String>,
+    },
+    Com {
+        #[arg(short, long)]
+        device: Option<u32>,
+
+        #[arg(short, long)]
+        frequency: f64
     }
 }
 

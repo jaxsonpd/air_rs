@@ -11,6 +11,9 @@ use sdr::list_devices;
 mod cli;
 use cli::{Commands, CliArgs};
 
+mod com;
+use com::launch_com;
+
 mod receive;
 use receive::launch_receive;
 
@@ -22,5 +25,6 @@ fn main() {
         Commands::List => list_devices().expect("Couldn't start sdr sub process"),
         Commands::Adsb {device, mode, playback} => launch_adsb(device, mode, playback),
         Commands::Receive {device, args} => launch_receive(device, args),
+        Commands::Com { device, frequency } => launch_com(device, frequency),
     };
 }
